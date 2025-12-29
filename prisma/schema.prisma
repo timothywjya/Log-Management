@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -9,25 +9,24 @@ datasource db {
 }
 
 model User {
-  id                   Int       @id @default(autoincrement())
-  role_id              Int?      
-  group_id             Int?      
-  first_name           String?   @db.VarChar(100)
-  last_name            String?   @db.VarChar(100)
-  nik                  String    @unique @db.VarChar(10)
-  user_email           String?   @unique @db.VarChar(150)
-  is_guest             Boolean   @default(true)
-  login_at             DateTime? @db.Timestamp
+  id            Int           @id @default(autoincrement())
+  role_id       Int?
+  group_id      Int?
+  first_name    String?       @db.VarChar(100)
+  last_name     String?       @db.VarChar(100)
+  nik           String        @unique @db.VarChar(10)
+  user_email    String?       @unique @db.VarChar(150)
+  is_guest      Boolean       @default(true)
+  login_at      DateTime?     @db.Timestamp
   
-  // Hubungkan properti Prisma ke kolom asli MySQL
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp
-  updatedAt            DateTime? @updatedAt @map("updated_at") @db.Timestamp
-  
-  updated_by           Int?
-  deleted_at           DateTime? @db.Timestamp
-  deleted_by           Int?
-  role                 Role?         @relation(fields: [role_id], references: [id])
-  program_group        ProgramGroup? @relation(fields: [group_id], references: [id])
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamp
+  updatedAt     DateTime?     @updatedAt @map("updated_at") @db.Timestamp
+  updated_by    Int?
+  deleted_at    DateTime?     @db.Timestamp
+  deleted_by    Int?
+
+  role          Role?         @relation(fields: [role_id], references: [id])
+  program_group ProgramGroup? @relation(fields: [group_id], references: [id])
 
   @@map("users")
 }
@@ -48,14 +47,46 @@ model Role {
 }
 
 model ProgramGroup {
-  id                Int      @id @default(autoincrement())
-  group_name        String   @db.VarChar(255)
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp
-  created_by        Int      @default(1)
-  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp
-  updated_by        Int?
+  id         Int       @id @default(autoincrement())
+  group_name String    @db.VarChar(255)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp
+  created_by Int       @default(1)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  updated_by Int?
   
-  users             User[]
+  users      User[]
+  programs   Program[]
 
   @@map("program_groups")
+}
+
+model Program {
+  id               Int          @id @default(autoincrement())
+  program_name     String       @db.VarChar(255)
+  program_type_id  Int
+  program_group_id Int
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamp
+  created_by       Int          @default(1)
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  updated_by       Int?
+  deleted_at       DateTime?    @db.Timestamp
+  deleted_by       Int?
+
+  program_type     ProgramType  @relation(fields: [program_type_id], references: [id])
+  program_group    ProgramGroup @relation(fields: [program_group_id], references: [id])
+
+  @@map("programs")
+}
+
+model ProgramType {
+  id           Int       @id @default(autoincrement())
+  program_type String    @db.VarChar(255) 
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp
+  created_by   Int       @default(1)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  updated_by   Int?
+
+  programs     Program[]
+
+  @@map("program_types")
 }

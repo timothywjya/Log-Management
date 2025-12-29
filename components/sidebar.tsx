@@ -47,7 +47,7 @@ export default function Sidebar({ user }: { user: any }) {
             <LayoutDashboard size={18} /> <span className="text-sm font-semibold">Dashboard</span>
           </Link>
 
-          <Link href="/program" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive('/program')}`}>
+          <Link href="/programs" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive('/program')}`}>
             <FileText size={18} /> <span className="text-sm font-semibold">Program</span>
           </Link>
 
