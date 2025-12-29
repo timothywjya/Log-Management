@@ -9,14 +9,53 @@ datasource db {
 }
 
 model User {
-  id         Int       @id @default(autoincrement())
-  nik        String    @unique @db.VarChar(10)
-  first_name String?   @db.VarChar(100)
-  last_name  String?   @db.VarChar(100)
-  user_email String?   @unique @db.VarChar(150)
-  is_guest   Boolean   @default(true)
-  login_at   DateTime? @default(now())
-  createdAt  DateTime  @default(now())
+  id                   Int       @id @default(autoincrement())
+  role_id              Int?      
+  group_id             Int?      
+  first_name           String?   @db.VarChar(100)
+  last_name            String?   @db.VarChar(100)
+  nik                  String    @unique @db.VarChar(10)
+  user_email           String?   @unique @db.VarChar(150)
+  is_guest             Boolean   @default(true)
+  login_at             DateTime? @db.Timestamp
+  
+  // Hubungkan properti Prisma ke kolom asli MySQL
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp
+  updatedAt            DateTime? @updatedAt @map("updated_at") @db.Timestamp
+  
+  updated_by           Int?
+  deleted_at           DateTime? @db.Timestamp
+  deleted_by           Int?
+  role                 Role?         @relation(fields: [role_id], references: [id])
+  program_group        ProgramGroup? @relation(fields: [group_id], references: [id])
 
   @@map("users")
+}
+
+model Role {
+  id                   Int      @id @default(autoincrement())
+  position_level       String?  @db.VarChar(2)
+  position_description String   @db.VarChar(255)
+  group_level          Int?     @db.Int
+  group_description    String   @db.VarChar(255)
+  role_name            String   @db.VarChar(255)
+  created_by           Int      @default(1)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp
+  
+  users                User[]
+
+  @@map("roles")
+}
+
+model ProgramGroup {
+  id                Int      @id @default(autoincrement())
+  group_name        String   @db.VarChar(255)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp
+  created_by        Int      @default(1)
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  updated_by        Int?
+  
+  users             User[]
+
+  @@map("program_groups")
 }

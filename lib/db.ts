@@ -1,13 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-// const prismaClientSingleton = () => {
-//   return new PrismaClient()
-// }
-
-console.log(process.env.DATABASE_URL);
-
 const prismaClientSingleton = () => {
-  console.log("DB URL Check:", process.env.DATABASE_URL) // Pastikan muncul di terminal
   return new PrismaClient()
 }
 
