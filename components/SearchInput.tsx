@@ -17,7 +17,7 @@ export default function SearchInput() {
       params.delete("query");
     }
     replace(`${pathname}?${params.toString()}`);
-  }, 300); // Tunggu 300ms setelah user berhenti mengetik
+  }, 300); 
 
   return (
     <div className="relative w-full max-w-md">

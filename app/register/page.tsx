@@ -4,8 +4,7 @@ import { notFound } from "next/navigation";
 
 export default async function RegisterPage() {
   const session = await getSession();
-
-  // PROTEKSI: Jika user tembak URL /register tanpa login atau session rusak
+  console.log(session.nik);
   if (!session || !session.nik) {
     notFound(); 
   }

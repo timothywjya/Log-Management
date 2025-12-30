@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { encrypt } from "@/lib/session";
+import { encrypt, getSession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -54,7 +54,9 @@ export async function authenticate(formData: FormData) {
         user = await db.user.create({
           data: {
             nik: nik,
-            is_guest: true,
+            is_guest: true, 
+            first_name: null,
+            last_name: null,
             login_at: new Date(),
           }
         });
@@ -69,7 +71,9 @@ export async function authenticate(formData: FormData) {
       const sessionToken = await encrypt({ 
         nik: user.nik, 
         role_id: user.role_id, 
-        group_id: user.group_id 
+        group_id: user.group_id,
+        is_guest: user.is_guest,
+        hasName: !!(user.first_name && user.last_name)
       });
 
       const cookieStore = await cookies();
@@ -82,6 +86,10 @@ export async function authenticate(formData: FormData) {
 
       if (!user.first_name || !user.user_email) {
         redirect("/register");
+      }
+      
+      if (user.is_guest) {
+        redirect("/waiting");
       }
       
       redirect("/dashboard");
@@ -110,4 +118,35 @@ export async function logout() {
   cookieStore.delete("auth_session");
 
   redirect("/login");
+}
+
+export async function updateSessionStatus() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  const user = await db.user.findUnique({
+    where: { nik: session.nik }
+  });
+
+  if (user && !user.is_guest) {
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+    const sessionToken = await encrypt({ 
+      nik: user.nik, 
+      role_id: user.role_id, 
+      group_id: user.group_id,
+      is_guest: false,
+      hasName: !!(user.first_name && user.last_name)
+    });
+
+    const cookieStore = await cookies();
+    cookieStore.set("auth_session", sessionToken, { 
+      expires, 
+      httpOnly: true, 
+      path: "/" 
+    });
+    
+    redirect("/dashboard");
+  }
+  
+  redirect("/waiting");
 }
