@@ -14,27 +14,51 @@ import {
   Users
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // Tambahkan useRouter
 import { useState } from "react";
+import Swal from "sweetalert2"; // Tambahkan Swal
 
 export default function Sidebar({ user }: { user: any }) {
   const [showLogout, setShowLogout] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
+  const router = useRouter(); // Inisialisasi router
 
-  // Perbaikan: Pastikan path string sesuai dengan href Link
   const isActive = (path: string) => pathname === path 
     ? "bg-[#1db495] text-white shadow-lg shadow-[#1db495]/20" 
     : "hover:bg-slate-800/50 text-slate-400 hover:text-white";
 
   const isAdmin = user?.role_id === 1 || user?.group_id === 6;
-  
   const canSeeReporting = [1, 4, 5, 8, 9].includes(user?.role_id);
+
+  const handleSignOut = async () => {
+    const result = await Swal.fire({
+      title: "Sign Out?",
+      text: "Apakah Anda yakin ingin mengakhiri sesi ini?",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#1db495",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Keluar",
+      cancelButtonText: "Batal",
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-[2rem]',
+        confirmButton: 'rounded-xl px-6 py-3 font-bold',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold'
+      }
+    });
+
+    if (result.isConfirmed) {
+      await logout(); 
+      router.push("/login"); 
+      router.refresh(); 
+    }
+  };
 
   return (
     <aside className="w-64 h-screen bg-[#0f172a] text-white flex flex-col justify-between fixed left-0 top-0 border-r border-slate-800 z-50">
       <div className="p-4 overflow-y-auto">
-        
         <div className="flex items-center gap-3 px-3 mb-10 mt-2">
           <div className="w-9 h-9 bg-[#1db495] rounded-xl flex items-center justify-center shadow-lg shadow-[#1db495]/30">
             <Database size={20} className="text-white" />
@@ -69,7 +93,7 @@ export default function Sidebar({ user }: { user: any }) {
               
               {(showUserMenu || pathname.startsWith('/users')) && (
                 <div className="mt-1 ml-4 pl-4 border-l border-slate-700 space-y-1 animate-in slide-in-from-top-2 duration-300">
-                  <Link href="/users/request-member" className={`block p-2 text-xs transition-colors ${pathname === '/users/team-member' ? 'text-[#1db495] font-bold' : 'text-slate-400 hover:text-[#1db495]'}`}>
+                  <Link href="/users/request-member" className={`block p-2 text-xs transition-colors ${pathname === '/users/request-member' ? 'text-[#1db495] font-bold' : 'text-slate-400 hover:text-[#1db495]'}`}>
                     User Request
                   </Link>
                   <Link href="/users/team-member" className={`block p-2 text-xs transition-colors ${pathname === '/users/team-member' ? 'text-[#1db495] font-bold' : 'text-slate-400 hover:text-[#1db495]'}`}>
@@ -102,7 +126,7 @@ export default function Sidebar({ user }: { user: any }) {
         <div className="relative">
           {showLogout && (
             <div className="absolute bottom-full left-0 w-full mb-3 bg-white text-slate-900 rounded-2xl shadow-2xl p-2 border border-slate-200 animate-in fade-in zoom-in duration-200">
-              <button onClick={async () => await logout()} className="w-full flex items-center gap-3 p-3 hover:bg-red-50 text-red-600 rounded-xl transition-colors font-bold text-xs uppercase tracking-wider">
+              <button onClick={handleSignOut} className="w-full flex items-center gap-3 p-3 hover:bg-red-50 text-red-600 rounded-xl transition-colors font-bold text-xs uppercase tracking-wider">
                 <LogOut size={16} /> Sign Out
               </button>
             </div>

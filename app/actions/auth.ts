@@ -1,7 +1,7 @@
 "use server";
 
 import db from "@/lib/db";
-import { encrypt, getSession } from "@/lib/session";
+import { decrypt, encrypt, getSession } from "@/lib/session";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -149,4 +149,31 @@ export async function updateSessionStatus() {
   }
   
   redirect("/waiting");
+}
+
+export async function extendSession() {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("auth_session")?.value;
+
+  if (!session) return { success: false };
+
+  try {
+    const payload = await decrypt(session);
+    if (!payload) return { success: false };
+
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+    const newToken = await encrypt({ ...payload, expires });
+
+    cookieStore.set("auth_session", newToken, {
+      expires,
+      httpOnly: true,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+    });
+
+    return { success: true };
+  } catch (error) {
+    return { success: false };
+  }
 }
