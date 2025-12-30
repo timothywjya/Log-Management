@@ -27,11 +27,9 @@ export default function Sidebar({ user }: { user: any }) {
     ? "bg-[#1db495] text-white shadow-lg shadow-[#1db495]/20" 
     : "hover:bg-slate-800/50 text-slate-400 hover:text-white";
 
-  // Logika Hak Akses
   const isAdmin = user?.role_id === 1 || user?.group_id === 6;
   
-  // Reporting Log hanya untuk Role 4, 5, 8, 9 (Manager & Senior Manager)
-  const canSeeReporting = [4, 5, 8, 9].includes(user?.role_id);
+  const canSeeReporting = [1, 4, 5, 8, 9].includes(user?.role_id);
 
   return (
     <aside className="w-64 h-screen bg-[#0f172a] text-white flex flex-col justify-between fixed left-0 top-0 border-r border-slate-800 z-50">
@@ -53,12 +51,10 @@ export default function Sidebar({ user }: { user: any }) {
             <LayoutDashboard size={18} /> <span className="text-sm font-semibold">Dashboard</span>
           </Link>
 
-          {/* Perbaikan: Link ke /program agar match dengan isActive */}
           <Link href="/program" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive('/program')}`}>
             <FileText size={18} /> <span className="text-sm font-semibold">Program</span>
           </Link>
 
-          {/* User Management Section */}
           {isAdmin && (
             <div>
               <button 
@@ -73,6 +69,9 @@ export default function Sidebar({ user }: { user: any }) {
               
               {(showUserMenu || pathname.startsWith('/users')) && (
                 <div className="mt-1 ml-4 pl-4 border-l border-slate-700 space-y-1 animate-in slide-in-from-top-2 duration-300">
+                  <Link href="/users/request-member" className={`block p-2 text-xs transition-colors ${pathname === '/users/team-member' ? 'text-[#1db495] font-bold' : 'text-slate-400 hover:text-[#1db495]'}`}>
+                    User Request
+                  </Link>
                   <Link href="/users/team-member" className={`block p-2 text-xs transition-colors ${pathname === '/users/team-member' ? 'text-[#1db495] font-bold' : 'text-slate-400 hover:text-[#1db495]'}`}>
                     Team Member
                   </Link>
@@ -91,7 +90,6 @@ export default function Sidebar({ user }: { user: any }) {
             <Database size={18} /> <span className="text-sm font-semibold">Activity Log</span>
           </Link>
 
-          {/* Menu Reporting Log Khusus Manager */}
           {canSeeReporting && (
             <Link href="/reporting" className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-300 ${isActive('/reporting')}`}>
               <BarChart3 size={18} /> <span className="text-sm font-semibold">Reporting Log</span>

@@ -1,102 +1,105 @@
 "use client";
 
 import { deleteProgram, restoreProgram } from "@/app/actions/program";
-import { Edit3, RefreshCcw, Trash2 } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
+import { useTransition } from "react";
 import Swal from "sweetalert2";
+import ProgramModal from "./modal/ProgramModal";
 
-interface ProgramActionsProps {
-  id: number;
-  isDeleted: boolean;
-  canEditDelete: boolean;
-  programData: any;
-}
+export default function ProgramActions({ id, isDeleted, canEditDelete, programData, user, types, groups }: any) {
+  const [isPending, startTransition] = useTransition();
 
-export default function ProgramActions({ id, isDeleted, canEditDelete, programData }: ProgramActionsProps) {
-  
-  const handleDelete = async () => {
-  const result = await Swal.fire({
-    title: "Are you sure?",
-    text: `You are about to delete "${programData.program_name}"`,
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonColor: "#1db495",
-    cancelButtonColor: "#ef4444",
-    confirmButtonText: "Yes, delete it!",
-    didOpen: () => {
-      const popup = Swal.getPopup();
-      if (popup) {
-        popup.style.borderRadius = "2rem"; 
-      }
-    }
-  });
+  if (!canEditDelete) return null;
 
-  if (result.isConfirmed) {
-    try {
-      await deleteProgram(id);
-      Swal.fire({
-        title: "Deleted!",
-        text: "Program has been moved to inactive.",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-        didOpen: () => {
-          const popup = Swal.getPopup();
-          if (popup) popup.style.borderRadius = "2rem";
-        }
-      });
-    } catch (error) {
-      Swal.fire("Error", "Something went wrong", "error");
-    }
-  }
-};
+  const themeColor = "#1db495";
 
-  const handleRestore = async () => {
-    const result = await Swal.fire({
-      title: "Restore Program?",
-      text: `Make "${programData.program_name}" active again?`,
-      icon: "question",
+  const handleDelete = () => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: `You are about to delete "${programData.program_name}"`,
+      icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#1db495",
-      confirmButtonText: "Yes, restore!",
+      confirmButtonColor: "#ef4444",
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonColor: "#64748b",
+      reverseButtons: true,
+      customClass: {
+        popup: 'rounded-[2.5rem]', 
+        confirmButton: 'rounded-xl px-6 py-3 font-bold',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        startTransition(async () => {
+          try {
+            await deleteProgram(id);
+            Swal.fire({
+              title: "Deleted!",
+              text: "Program has been moved to trash.",
+              icon: "success",
+              customClass: { popup: 'rounded-[2.5rem]' }
+            });
+          } catch (error) {
+            Swal.fire("Error", "Failed to delete program", "error");
+          }
+        });
+      }
     });
-
-    if (result.isConfirmed) {
-      await restoreProgram(id);
-      Swal.fire("Restored!", "Program is now active.", "success");
-    }
   };
 
-  if (!canEditDelete) {
-    return (
-      <div className="pt-5 border-t border-slate-50 mt-4">
-        <span className="text-[10px] italic text-slate-300 font-medium">Read-only access</span>
-      </div>
-    );
-  }
+  const handleRestore = () => {
+    Swal.fire({
+      title: "Restore Program?",
+      text: `Reactivate "${programData.program_name}"?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: themeColor,
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Yes, restore!",
+      customClass: {
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-xl px-6 py-3 font-bold',
+        cancelButton: 'rounded-xl px-6 py-3 font-bold'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        startTransition(async () => {
+          try {
+            await restoreProgram(id);
+            Swal.fire({
+              title: "Restored!",
+              text: "Program is now active again.",
+              icon: "success",
+              customClass: { popup: 'rounded-[2.5rem]' }
+            });
+          } catch (error) {
+            Swal.fire("Error", "Failed to restore program", "error");
+          }
+        });
+      }
+    });
+  };
 
   return (
-    <div className="flex gap-4 pt-5 border-t border-slate-50 mt-4">
+    <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-50">
       {!isDeleted ? (
         <>
+          <ProgramModal mode="edit" program={programData} user={user} types={types} groups={groups} />
           <button 
-            onClick={() => console.log("Open Edit Modal")}
-            className="flex items-center gap-1.5 text-[11px] font-bold text-blue-500 hover:text-blue-700"
+            disabled={isPending} 
+            onClick={handleDelete} 
+            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
           >
-            <Edit3 size={14} /> Edit
-          </button>
-          <button 
-            onClick={handleDelete}
-            className="flex items-center gap-1.5 text-[11px] font-bold text-red-500 hover:text-red-700"
-          >
-            <Trash2 size={14} /> Delete
+            <Trash2 size={18} />
           </button>
         </>
       ) : (
         <button 
-          onClick={handleRestore}
-          className="flex items-center gap-1.5 text-[11px] font-bold text-[#1db495] hover:text-[#168a73] bg-[#1db495]/10 px-4 py-2 rounded-xl"
+          disabled={isPending} 
+          onClick={handleRestore} 
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#1db495] bg-[#1db495]/10 hover:bg-[#1db495]/20 rounded-xl transition-all"
         >
-          <RefreshCcw size={14} /> Restore Program
+          <RotateCcw size={16} /> Restore
         </button>
       )}
     </div>

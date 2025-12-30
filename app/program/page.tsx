@@ -1,4 +1,4 @@
-import CreateProgramModal from "@/components/modal/CreateProgramModal";
+import CreateProgramModal from "@/components/modal/ProgramModal";
 import ProgramActions from "@/components/ProgramActions";
 import SearchInput from "@/components/SearchInput";
 import Sidebar from "@/components/sidebar";
@@ -109,7 +109,10 @@ export default async function ProgramPage({
                     id={p.id} 
                     isDeleted={isDeleted}
                     canEditDelete={canEditDelete}
-                    programData={p}
+                    programData={p}     
+                    user={user}          
+                    types={types}        
+                    groups={groups}      
                   />
                 </div>
               );
