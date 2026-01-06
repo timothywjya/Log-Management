@@ -20,7 +20,7 @@ export default async function RequestMemberPage() {
     orderBy: { createdAt: 'desc' }
   });
 
-    const roles = await db.role.findMany({where: { id:1 }});
+    const roles = await db.role.findMany({where: { id: { not: 1 } }});
   const groups = await db.programGroup.findMany();
 
   return (
