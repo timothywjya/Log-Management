@@ -1,0 +1,253 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library" 
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Team {
+  id         String    @id @default(uuid())
+  team_name  String    @db.VarChar(255)
+  team_type  String    @default("programmer") @db.VarChar(50) // 'programmer' | 'support'
+  created_at DateTime  @default(now())
+  created_by String?   @db.VarChar(100)
+  updated_at DateTime  @updatedAt
+  updated_by String?   @db.VarChar(100)
+  deleted_at DateTime?
+  deleted_by String?   @db.VarChar(100)
+
+  sub_teams SubTeam[]
+  users     User[]
+  programs  Program[]
+
+  programmer_groups ProgramGroup[] @relation("ProgramGroupProgrammerTeam")
+  support_groups    ProgramGroup[] @relation("ProgramGroupSupportTeam")
+
+  @@map("teams")
+}
+
+model SubTeam {
+  id            String    @id @default(uuid())
+  sub_team_name String    @db.VarChar(255)
+  team_id       String
+  created_at    DateTime  @default(now())
+  created_by    String?   @db.VarChar(100)
+  updated_at    DateTime  @updatedAt
+  updated_by    String?   @db.VarChar(100)
+  deleted_at    DateTime?
+  deleted_by    String?   @db.VarChar(100)
+
+  team  Team   @relation(fields: [team_id], references: [id])
+  users User[]
+
+  @@map("sub_teams")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PROGRAM GROUPS  (Divisi / Kategori Program)
+//  Setiap Group memiliki satu Tim Programmer dan satu Tim Support
+//  langsung via programmer_team_id & support_team_id
+// ─────────────────────────────────────────────────────────────
+
+model ProgramGroup {
+  id                 String    @id @default(uuid())
+  group_name         String    @db.VarChar(255)
+  programmer_team_id String?
+  support_team_id    String?
+  created_at         DateTime  @default(now())
+  created_by         String?   @db.VarChar(100)
+  updated_at         DateTime  @default(now()) @updatedAt
+  updated_by         String?   @db.VarChar(100)
+  deleted_at         DateTime?
+  deleted_by         String?   @db.VarChar(100)
+
+  programmer_team Team? @relation("ProgramGroupProgrammerTeam", fields: [programmer_team_id], references: [id])
+  support_team    Team? @relation("ProgramGroupSupportTeam",    fields: [support_team_id],    references: [id])
+
+  users    User[]
+  programs Program[]
+
+  @@map("program_groups")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  USERS
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id                  String    @id @default(uuid())
+  team_id             String?
+  sub_team_id         String?
+  group_id            String?
+  first_name          String?   @db.VarChar(100)
+  last_name           String?   @db.VarChar(100)
+  nik                 String    @unique @db.VarChar(10)
+  username            String?   @unique @db.VarChar(100)
+  user_email          String?   @unique @db.VarChar(150)
+  password_hash       String?   @db.VarChar(255)
+  mfa_secret          String?   @db.VarChar(255)
+  mfa_enabled         Boolean   @default(false)
+  is_guest            Boolean   @default(true)
+  is_admin            Boolean   @default(false)
+  is_manager          Boolean   @default(false)
+  must_reset_password Boolean   @default(false)
+  login_at            DateTime?
+  created_at          DateTime  @default(now())
+  created_by          String?   @db.VarChar(100)
+  updated_at          DateTime? @updatedAt
+  updated_by          String?   @db.VarChar(100)
+  deleted_at          DateTime?
+  deleted_by          String?   @db.VarChar(100)
+
+  team          Team?         @relation(fields: [team_id],  references: [id])
+  sub_team      SubTeam?      @relation(fields: [sub_team_id], references: [id])
+  program_group ProgramGroup? @relation(fields: [group_id], references: [id])
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  PROGRAM TYPES & PROGRAMS
+// ─────────────────────────────────────────────────────────────
+
+model ProgramType {
+  id           String    @id @default(uuid())
+  program_type String    @db.VarChar(255)
+  created_at   DateTime  @default(now())
+  created_by   String?   @db.VarChar(100)
+  updated_at   DateTime  @default(now()) @updatedAt
+  updated_by   String?   @db.VarChar(100)
+  deleted_at   DateTime?
+  deleted_by   String?   @db.VarChar(100)
+
+  programs Program[]
+
+  @@map("program_types")
+}
+
+model Program {
+  id               String    @id @default(uuid())
+  program_name     String    @db.VarChar(255)
+  program_type_id  String
+  program_group_id String
+  team_id          String?
+  secret_key       String?   @db.VarChar(64)
+  iv               String?   @db.VarChar(32)
+  created_at       DateTime  @default(now())
+  created_by       String?   @db.VarChar(100)
+  updated_at       DateTime  @default(now()) @updatedAt
+  updated_by       String?   @db.VarChar(100)
+  deleted_at       DateTime?
+  deleted_by       String?   @db.VarChar(100)
+
+  program_type  ProgramType  @relation(fields: [program_type_id],  references: [id])
+  program_group ProgramGroup @relation(fields: [program_group_id], references: [id])
+  team          Team?        @relation(fields: [team_id],          references: [id])
+
+  log_apis     LogApi[]
+  log_webs     LogWeb[]
+  log_desktops LogDesktop[]
+  log_apps     LogApp[]
+
+  @@map("programs")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LOGGING TABLES
+// ─────────────────────────────────────────────────────────────
+
+model LogApi {
+  id            String   @id @default(uuid()) @map("api_ids")
+  program_id    String?  @map("api_program_id")
+  program_uid   String?  @map("api_program_uid")
+  endpoint      String?  @db.VarChar(255) @map("api_endpoint")
+  params        String?  @map("api_params")
+  json_request  Json?    @map("api_json_request")
+  message       String?  @map("api_message")
+  error_message String?  @map("api_errormessage")
+  created_at    DateTime @default(now()) @map("api_created_at")
+  created_by    String?  @db.VarChar(100) @map("api_created_by")
+  updated_at    DateTime @updatedAt @map("api_updated_at")
+  updated_by    String?  @db.VarChar(100) @map("api_updated_by")
+
+  program Program? @relation(fields: [program_id], references: [id])
+
+  @@map("log_apis")
+}
+
+model LogWeb {
+  id            String   @id @default(uuid()) @map("web_ids")
+  program_id    String?  @map("web_program_id")
+  program_uid   String?  @map("web_program_uid")
+  endpoint      String?  @db.VarChar(255) @map("web_endpoint")
+  params        String?  @map("web_params")
+  json_request  Json?    @map("web_json_request")
+  message       String?  @map("web_message")
+  error_message String?  @map("web_errormessage")
+  created_at    DateTime @default(now()) @map("web_created_at")
+  created_by    String?  @db.VarChar(100) @map("web_created_by")
+  updated_at    DateTime @updatedAt @map("web_updated_at")
+  updated_by    String?  @db.VarChar(100) @map("web_updated_by")
+
+  program Program? @relation(fields: [program_id], references: [id])
+
+  @@map("log_webs")
+}
+
+model LogDesktop {
+  id            String   @id @default(uuid()) @map("desktop_ids")
+  program_id    String?  @map("desktop_program_id")
+  program_uid   String?  @map("desktop_program_uid")
+  branch_code   String?  @db.VarChar(50) @map("desktop_branch_code")
+  store_code    String?  @db.VarChar(50) @map("desktop_store_code")
+  station       String?  @db.VarChar(100) @default("1") @map("desktop_station")
+  functions     String?  @db.VarChar(255) @map("desktop_functions")
+  message       String?  @map("desktop_message")
+  error_message String?  @map("desktop_errormessage")
+  created_at    DateTime @default(now()) @map("desktop_created_at")
+  created_by    String?  @db.VarChar(100) @map("desktop_created_by")
+  updated_at    DateTime @updatedAt @map("desktop_updated_at")
+  updated_by    String?  @db.VarChar(100) @map("desktop_updated_by")
+
+  program Program? @relation(fields: [program_id], references: [id])
+
+  @@map("log_desktops")
+}
+
+model LogApp {
+  id            String   @id @default(uuid()) @map("apps_ids")
+  program_id    String?  @map("apps_program_id")
+  program_uid   String?  @map("apps_program_uid")
+  endpoint      String?  @db.VarChar(255) @map("apps_endpoint")
+  params        String?  @map("apps_params")
+  json_request  String?  @map("apps_json_request")
+  message       String?  @map("apps_message")
+  error_message String?  @map("apps_errormessage")
+  created_at    DateTime @default(now()) @map("apps_created_at")
+  created_by    String?  @db.VarChar(100) @map("apps_created_by")
+  updated_at    DateTime @updatedAt @map("apps_updated_at")
+  updated_by    String?  @db.VarChar(100) @map("apps_updated_by")
+
+  program Program? @relation(fields: [program_id], references: [id])
+
+  @@map("log_apps")
+}
+
+// ─────────────────────────────────────────────────────────────
+//  REPORTING
+// ─────────────────────────────────────────────────────────────
+
+model ReportDefinition {
+  id           String   @id @default(uuid())
+  name         String   @unique @db.VarChar(100)
+  type         String   @db.VarChar(50)
+  description  String?
+  query_config Json
+  role_access  Json
+  created_at   DateTime @default(now())
+  created_by   String?  @db.VarChar(100)
+
+  @@map("report_definitions")
+}
