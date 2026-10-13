@@ -1,122 +1,85 @@
 "use server";
 
 import db from "@/lib/db";
-import { decrypt, encrypt, getSession } from "@/lib/session";
-import { cookies } from "next/headers";
+import { toSessionPayload } from "@/lib/auth";
+import { clearSessionCookie, getSession, setSessionCookie } from "@/lib/session";
 import { redirect } from "next/navigation";
 
 interface ESSResponse {
   LoginESS_V2Result: string;
 }
 
-export async function authenticate(formData: FormData) {
-  const nik = formData.get("nik") as string;
-  const password = formData.get("password") as string;
+const ESS_URL =
+  process.env.ESS_URL || "http://ess1.indomaret.lan:8070/LoginESSREST.svc/v2/LoginESS";
 
-  if (!nik || nik.length !== 10 || !password) {
+async function callESS(nik: string, password: string): Promise<ESSResponse | null> {
+  const maxRetries = 3;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(ESS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: { nik, pass: password } }),
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000), // supaya tidak menggantung jika ESS tidak merespons
+      });
+      if (response.ok) return await response.json();
+    } catch {
+      // jatuh ke retry
+    }
+    if (attempt < maxRetries) await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  console.error("ESS connection failed after 3 attempts");
+  return null;
+}
+
+export async function authenticate(formData: FormData) {
+  const nik = String(formData.get("nik") ?? "");
+  const password = String(formData.get("password") ?? "");
+
+  if (!/^\d{10}$/.test(nik) || !password) {
     return { error: "NIK (10 digit) dan Password wajib diisi." };
   }
 
-  let responseData: ESSResponse | null = null;
-  const maxRetries = 3;
-  const url = process.env.ESS_URL || "http://ess1.indomaret.lan:8070/LoginESSREST.svc/v2/LoginESS";
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user: { nik: nik, pass: password }
-        }),
-        cache: 'no-store'
-      });
-
-      if (response.ok) {
-        responseData = await response.json();
-        break;
-      }
-    } catch (error) {
-      if (attempt === maxRetries - 1) console.error("ESS Connection failed after 3 attempts");
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-
+  const responseData = await callESS(nik, password);
   const essResult = responseData?.LoginESS_V2Result;
 
-  if (essResult === "Sukses") {
-    try {
-      let user = await db.user.findUnique({
-        where: { nik: nik }
-      });
-
-      if (!user) {
-        user = await db.user.create({
-          data: {
-            nik: nik,
-            is_guest: true, 
-            first_name: null,
-            last_name: null,
-            login_at: new Date(),
-          }
-        });
-      } else {
-        user = await db.user.update({
-          where: { nik: nik },
-          data: { login_at: new Date() }
-        });
-      }
-
-      const expires = new Date(Date.now() + 60 * 60 * 1000);
-      const sessionToken = await encrypt({ 
-        nik: user.nik, 
-        role_id: user.role_id, 
-        group_id: user.group_id,
-        is_guest: user.is_guest,
-        hasName: !!(user.first_name && user.last_name)
-      });
-
-      const cookieStore = await cookies();
-      cookieStore.set("auth_session", sessionToken, { 
-        expires, 
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === "production",
-        path: "/" 
-      });
-
-      if (!user.first_name || !user.user_email) {
-        redirect("/register");
-      }
-      
-      if (user.is_guest) {
-        redirect("/waiting");
-      }
-      
-      redirect("/dashboard");
-
-    } catch (err: any) {
-      if (err.message === 'NEXT_REDIRECT' || err.digest?.includes('NEXT_REDIRECT')) throw err; 
-      
-      console.error("Auth Error:", err);
-      return { error: "Terjadi kesalahan internal database: " + err.message };
-    }
+  if (essResult !== "Sukses") {
+    return { error: essResult || "Gagal terhubung ke server ESS. Silakan coba lagi." };
   }
 
-  return { 
-    error: essResult || "Gagal terhubung ke server ESS. Silakan coba lagi." 
-  };
+  let destination = "/dashboard";
+
+  try {
+    const existing = await db.user.findUnique({ where: { nik } });
+
+    // Akun yang dinonaktifkan admin tidak boleh login lagi.
+    if (existing?.deleted_at) {
+      return { error: "Akun Anda sudah dinonaktifkan. Hubungi administrator." };
+    }
+
+    const user = existing
+      ? await db.user.update({ where: { nik }, data: { login_at: new Date() } })
+      : await db.user.create({ data: { nik, is_guest: true, login_at: new Date() } });
+
+    const payload = toSessionPayload(user);
+    await setSessionCookie(payload);
+
+    if (!payload.hasName) destination = "/register";
+    else if (user.is_guest) destination = "/waiting";
+  } catch (err) {
+    // Detail error hanya ke log server, tidak dibocorkan ke browser.
+    console.error("Auth error:", err);
+    return { error: "Terjadi kesalahan pada server. Silakan coba lagi." };
+  }
+
+  redirect(destination);
 }
 
 export async function logout() {
-  const cookieStore = await cookies();
-
-  cookieStore.set("auth_session", "", {
-    path: "/",
-    expires: new Date(0), 
-  });
-
-  cookieStore.delete("auth_session");
-
+  await clearSessionCookie();
   redirect("/login");
 }
 
@@ -124,56 +87,22 @@ export async function updateSessionStatus() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const user = await db.user.findUnique({
-    where: { nik: session.nik }
-  });
+  const user = await db.user.findFirst({ where: { nik: session.nik, deleted_at: null } });
+  if (!user) redirect("/api/session/clear");
 
-  if (user && !user.is_guest) {
-    const expires = new Date(Date.now() + 60 * 60 * 1000);
-    const sessionToken = await encrypt({ 
-      nik: user.nik, 
-      role_id: user.role_id, 
-      group_id: user.group_id,
-      is_guest: false,
-      hasName: !!(user.first_name && user.last_name)
-    });
-
-    const cookieStore = await cookies();
-    cookieStore.set("auth_session", sessionToken, { 
-      expires, 
-      httpOnly: true, 
-      path: "/" 
-    });
-    
-    redirect("/dashboard");
-  }
-  
-  redirect("/waiting");
+  await setSessionCookie(toSessionPayload(user));
+  redirect(user.is_guest ? "/waiting" : "/dashboard");
 }
 
 export async function extendSession() {
-  const cookieStore = await cookies();
-  const session = cookieStore.get("auth_session")?.value;
-
+  const session = await getSession();
   if (!session) return { success: false };
 
-  try {
-    const payload = await decrypt(session);
-    if (!payload) return { success: false };
+  // Payload dibangun ulang dari database, jadi perubahan role & status ikut terbawa
+  // dan user yang sudah dinonaktifkan tidak bisa memperpanjang sesi.
+  const user = await db.user.findFirst({ where: { nik: session.nik, deleted_at: null } });
+  if (!user) return { success: false };
 
-    const expires = new Date(Date.now() + 60 * 60 * 1000);
-    const newToken = await encrypt({ ...payload, expires });
-
-    cookieStore.set("auth_session", newToken, {
-      expires,
-      httpOnly: true,
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    });
-
-    return { success: true };
-  } catch (error) {
-    return { success: false };
-  }
+  await setSessionCookie(toSessionPayload(user));
+  return { success: true };
 }

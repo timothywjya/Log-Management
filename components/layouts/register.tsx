@@ -48,9 +48,6 @@ export function Register({ nikFromSession }: { nikFromSession: string }) {
       )}
 
       <form action={handleFormSubmit} className="space-y-5">
-        {/* NIK dikirim secara hidden untuk keamanan database update */}
-        <input type="hidden" name="nik" value={nikFromSession} />
-        
         <div className="space-y-2">
           <Label className="text-xs uppercase tracking-widest font-bold text-slate-400 ml-1">Nama Lengkap</Label>
           <div className="grid grid-cols-2 gap-3">

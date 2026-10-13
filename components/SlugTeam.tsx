@@ -1,29 +1,20 @@
-
 import db from "@/lib/db";
-import { getSession } from "@/lib/session";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth";
 
 export async function getTeamData(groupLevel: number) {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
-  const currentUser = await db.user.findUnique({
-    where: { nik: session.nik },
-    include: { role: true }
-  });
-
-  if (!currentUser) redirect("/login");
+  // Halaman tim hanya untuk admin (sama seperti menu "User Management" di sidebar).
+  const currentUser = await requireUser({ admin: true });
 
   const teamMembers = await db.user.findMany({
     where: {
       is_guest: false,
-      role: { group_level: groupLevel }
+      role: { group_level: groupLevel },
     },
     include: {
       role: true,
-      program_group: true
+      program_group: true,
     },
-    orderBy: { first_name: 'asc' }
+    orderBy: { first_name: 'asc' },
   });
 
   return { teamMembers, currentUser };

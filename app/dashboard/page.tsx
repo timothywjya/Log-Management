@@ -1,35 +1,25 @@
 import Sidebar from "@/components/sidebar";
 import db from "@/lib/db";
-import { getSession } from "@/lib/session";
+import { requireUser } from "@/lib/auth";
+import { canSeeAllPrograms, isAdmin as checkAdmin } from "@/lib/permissions";
 import {
   Database,
   FileText,
   User as UserIcon,
   Users
 } from "lucide-react";
-import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({
-    where: { nik: session.nik },
-    include: { role: true, program_group: true }
-  });
-
-  if (!user) redirect("/login");
-
-  const isAdmin = user.role_id === 1 || user.group_id === 6;
-  const isSuperUser = user.role_id === 4 || user.role_id === 5;
-  const canSeeAll = isAdmin || isSuperUser;
-  
+  const isAdmin = checkAdmin(user);
+  const canSeeAll = canSeeAllPrograms(user);
   const accessFilter = canSeeAll ? {} : { program_group_id: user.group_id || 0 };
 
-  const [totalLogs, totalUsers, allPrograms] = await Promise.all([
-    10, 
-    db.user.count({ where: canSeeAll ? {} : { group_id: user.group_id } }),
-    db.program.findMany({ where: accessFilter })
+  const [totalUsers, pendingRequests, allPrograms] = await Promise.all([
+    db.user.count({ where: { is_guest: false, deleted_at: null, ...(canSeeAll ? {} : { group_id: user.group_id }) } }),
+    isAdmin ? db.user.count({ where: { is_guest: true, deleted_at: null } }) : Promise.resolve(0),
+    db.program.findMany({ where: accessFilter, select: { deleted_at: true } }),
   ]);
 
   const activePrograms = allPrograms.filter(p => p.deleted_at === null).length;
@@ -50,9 +40,9 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard 
             title="Total Logs" 
-            value={totalLogs.toLocaleString()} 
+            value="—" 
             icon={<Database className="text-blue-500"/>} 
-            trend="+12% from last week" 
+            trend="Belum terhubung ke data log" 
           />
           
           {/* CARD PROGRAMS DENGAN BREAKDOWN ACTIVE/INACTIVE */}
@@ -71,11 +61,11 @@ export default async function DashboardPage() {
                 title="Total Users" 
                 value={totalUsers.toString()} 
                 icon={<Users className="text-[#1db495]"/>} 
-                trend="Across all groups" 
+                trend="Active members" 
               />
               <StatCard 
                 title="Pending Requests" 
-                value="5" 
+                value={pendingRequests.toString()} 
                 icon={<UserIcon className="text-amber-500"/>} 
                 trend="Require approval" 
                 color="bg-amber-50 border-amber-100" 

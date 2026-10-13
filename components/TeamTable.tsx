@@ -1,6 +1,7 @@
 "use client";
 
 import { toggleUserStatus } from "@/app/actions/user-team";
+import { canManageTeamMember } from "@/lib/permissions";
 import { RotateCcw, ShieldAlert, Trash2 } from "lucide-react";
 import { useTransition } from "react";
 import Swal from "sweetalert2";
@@ -8,24 +9,9 @@ import Swal from "sweetalert2";
 export default function TeamTable({ members, currentUser, groupLevel }: any) {
   const [isPending, startTransition] = useTransition();
 
-  // LOGIKA AKSES SESUAI PERMINTAAN:
-  const canManage = (member: any) => {
-    const role = currentUser.role_id;
-    // 1. Role ID 1 (Admin) bisa segalanya
-    if (role === 1) return true;
-
-    // 2. Jika di Page Programmer (Group Level 1)
-    if (groupLevel === 1) {
-      return [3, 4, 5].includes(role);
-    }
-
-    // 3. Jika di Page Support (Group Level 2)
-    if (groupLevel === 2) {
-      return [7, 8, 9].includes(role);
-    }
-
-    return false;
-  };
+  // Aturan yang sama dengan yang dicek ulang di server (lib/permissions.ts).
+  const canManage = (member: any) =>
+    member.id !== currentUser.id && canManageTeamMember(currentUser, member.role?.group_level ?? groupLevel);
 
   const handleAction = (id: number, action: 'delete' | 'restore', name: string) => {
     Swal.fire({
@@ -39,7 +25,11 @@ export default function TeamTable({ members, currentUser, groupLevel }: any) {
     }).then((result) => {
       if (result.isConfirmed) {
         startTransition(async () => {
-          await toggleUserStatus(id, action, currentUser.id);
+          const res = await toggleUserStatus(id, action);
+          if (!res.ok) {
+            Swal.fire("Gagal", res.error, "error");
+            return;
+          }
           Swal.fire("Berhasil", `User telah di-${action}`, "success");
         });
       }
@@ -87,6 +77,7 @@ export default function TeamTable({ members, currentUser, groupLevel }: any) {
                     <div className="flex justify-center gap-2">
                       {!isDeleted ? (
                         <button 
+                          disabled={isPending}
                           onClick={() => handleAction(m.id, 'delete', m.first_name)}
                           className="p-2 text-red-400 hover:bg-red-50 rounded-xl transition-all"
                         >
@@ -94,6 +85,7 @@ export default function TeamTable({ members, currentUser, groupLevel }: any) {
                         </button>
                       ) : (
                         <button 
+                          disabled={isPending}
                           onClick={() => handleAction(m.id, 'restore', m.first_name)}
                           className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-all"
                         >

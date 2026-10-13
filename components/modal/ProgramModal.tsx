@@ -1,35 +1,45 @@
 "use client";
 
 import { createProgram, updateProgram } from "@/app/actions/program";
+import SecretKeyDialog from "@/components/SecretKeyDialog";
+import { isLockedToOwnGroup } from "@/lib/permissions";
 import { Edit2, Loader2, Plus, X } from "lucide-react";
 import { useState, useTransition } from "react";
-
-import { Trash2, Edit3, RefreshCcw } from "lucide-react";
 import Swal from "sweetalert2";
-import { deleteProgram, restoreProgram } from "@/app/actions/program";  
 
 export default function ProgramModal({ mode = "create", program, user, types, groups }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [newKey, setNewKey] = useState<{ programName: string; secretKey: string } | null>(null);
 
-  const isLockedToOwnGroup = user.role_id === 2 || user.role_id === 3;
-  const defaultGroupId = mode === "edit" ? program.program_group_id : (isLockedToOwnGroup ? user.group_id : "");
+  const lockedGroup = isLockedToOwnGroup(user);
+  const defaultGroupId = mode === "edit" ? program.program_group_id : lockedGroup ? user.group_id : "";
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = {
-      name: formData.get("name") as string,
+      name: String(formData.get("name") ?? ""),
       typeId: Number(formData.get("typeId")),
-      groupId: Number(formData.get("groupId")),
+      // <select disabled> tidak ikut terkirim di FormData; server juga yang menentukan group untuk role terkunci.
+      groupId: lockedGroup ? undefined : Number(formData.get("groupId")),
     };
 
+    const showError = (message: string) =>
+      Swal.fire({ title: "Gagal", text: message, icon: "error", customClass: { popup: "rounded-[2.5rem]" } });
+
     startTransition(async () => {
-      try {
-        if (mode === "create") await createProgram(data);
-        else await updateProgram(program.id, data);
+      if (mode === "create") {
+        const result = await createProgram(data);
+        if (!result.ok) return void showError(result.error);
         setIsOpen(false);
-      } catch (err) { alert("Error saving data"); }
+        // Program baru langsung dibuatkan secret key; tampilkan sekali.
+        setNewKey({ programName: result.programName, secretKey: result.secretKey });
+      } else {
+        const result = await updateProgram(program.id, data);
+        if (!result.ok) return void showError(result.error);
+        setIsOpen(false);
+      }
     });
   };
 
@@ -51,27 +61,35 @@ export default function ProgramModal({ mode = "create", program, user, types, gr
             <form onSubmit={handleSubmit} className="space-y-5 text-left">
               <div>
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Program Name</label>
-                <input required name="name" defaultValue={program?.program_name} className="w-full h-12 bg-slate-100 border-none rounded-xl px-4 mt-1 focus:ring-2 focus:ring-[#1db495]" />
+                <input required maxLength={255} name="name" defaultValue={program?.program_name} className="w-full h-12 bg-slate-100 border-none rounded-xl px-4 mt-1 focus:ring-2 focus:ring-[#1db495]" />
               </div>
               <div>
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Type</label>
-                <select name="typeId" defaultValue={program?.program_type_id} className="w-full h-12 bg-slate-100 border-none rounded-xl px-4 mt-1">
+                <select required name="typeId" defaultValue={program?.program_type_id} className="w-full h-12 bg-slate-100 border-none rounded-xl px-4 mt-1">
                   {types.map((t: any) => <option key={t.id} value={t.id}>{t.program_type}</option>)}
                 </select>
               </div>
               <div>
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Group</label>
-                <select name="groupId" disabled={isLockedToOwnGroup} defaultValue={defaultGroupId} className="w-full h-12 bg-slate-100 border-none rounded-xl px-4 mt-1 disabled:opacity-50">
+                <select required name="groupId" disabled={lockedGroup} defaultValue={defaultGroupId} className="w-full h-12 bg-slate-100 border-none rounded-xl px-4 mt-1 disabled:opacity-50">
+                  {!lockedGroup && <option value="">Pilih group</option>}
                   {groups.map((g: any) => <option key={g.id} value={g.id}>{g.group_name}</option>)}
                 </select>
               </div>
-              <button disabled={isPending} className="w-full h-14 bg-[#1db495] text-white rounded-2xl font-black shadow-lg hover:bg-[#168a73] transition-all flex justify-center items-center">
+              {mode === "create" && (
+                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">
+                  Secret key akan dibuat otomatis dan ditampilkan sekali setelah program tersimpan.
+                </p>
+              )}
+              <button disabled={isPending} className="w-full h-14 bg-[#1db495] text-white rounded-2xl font-black shadow-lg hover:bg-[#168a73] transition-all flex justify-center items-center disabled:opacity-60">
                 {isPending ? <Loader2 className="animate-spin" /> : "Confirm & Save"}
               </button>
             </form>
           </div>
         </div>
       )}
+
+      {newKey && <SecretKeyDialog {...newKey} onClose={() => setNewKey(null)} />}
     </>
   );
 }

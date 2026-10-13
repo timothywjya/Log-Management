@@ -20,7 +20,11 @@ export default function RequestTable({ users, roles, groups }: any) {
     });
 
     if (result.isConfirmed) {
-      await rejectUser(id);
+      const res = await rejectUser(id);
+      if (!res.ok) {
+            Swal.fire("Error", res.error, "error");
+            return;
+          }
       Swal.fire("Deleted", "User has been rejected.", "success");
     }
   };
@@ -36,8 +40,12 @@ export default function RequestTable({ users, roles, groups }: any) {
     }
 
     setLoadingId(userId);
-    await approveUser(userId, roleId, groupId);
+    const res = await approveUser(userId, roleId, groupId);
     setLoadingId(null);
+    if (!res.ok) {
+            Swal.fire("Error", res.error, "error");
+            return;
+          }
     Swal.fire({ title: "Approved!", icon: "success", timer: 1500, showConfirmButton: false });
   };
 

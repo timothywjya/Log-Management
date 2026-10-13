@@ -3,40 +3,42 @@ import ProgramActions from "@/components/ProgramActions";
 import SearchInput from "@/components/SearchInput";
 import Sidebar from "@/components/sidebar";
 import db from "@/lib/db";
-import { getSession } from "@/lib/session";
-import { Code, Database as DbIcon, Globe, Laptop, Settings, Smartphone } from "lucide-react";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth";
+import { canManageProgram, canSeeAllPrograms } from "@/lib/permissions";
+import { Code, Database as DbIcon, Globe, KeyRound, Laptop, Settings, Smartphone } from "lucide-react";
 
 export default async function ProgramPage({
   searchParams,
 }: {
   searchParams: Promise<{ query?: string }>;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const user = await requireUser();
 
-  const user = await db.user.findUnique({
-    where: { nik: session.nik },
-    include: { role: true, program_group: true }
-  });
-
-  if (!user) redirect("/login");
-
-  const query = (await searchParams).query || "";
-  const isSuperAdmin = user.role_id === 1 || user.group_id === 6;
-  const canSeeAll = isSuperAdmin || user.role_id === 4 || user.role_id === 5;
+  const query = ((await searchParams).query || "").trim();
+  const canSeeAll = canSeeAllPrograms(user);
 
   const programs = await db.program.findMany({
     where: {
       ...(canSeeAll ? {} : { program_group_id: user.group_id || 0 }),
-      program_name: { contains: query },
+      // Postgres case-sensitive; MySQL tidak. mode: insensitive menjaga perilaku pencarian lama.
+      program_name: { contains: query, mode: "insensitive" },
     },
-    include: {
+    select: {
+      id: true,
+      program_name: true,
+      program_type_id: true,
+      program_group_id: true,
+      deleted_at: true,
+      secret_key_prefix: true,
+      secret_key_generated_at: true,
       program_type: true,
       program_group: true,
     },
     orderBy: { program_name: 'asc' }
   });
+
+  // Hanya field yang dibutuhkan client component yang dikirim ke browser.
+  const clientUser = { role_id: user.role_id, group_id: user.group_id };
 
   const types = await db.programType.findMany();
   const groups = await db.programGroup.findMany();
@@ -66,14 +68,14 @@ export default async function ProgramPage({
               {canSeeAll ? "Viewing all team programs" : `Viewing programs for ${user.program_group?.group_name}`}
             </p>
           </div>
-          <CreateProgramModal user={user} types={types} groups={groups} />
+          <CreateProgramModal user={clientUser} types={types} groups={groups} />
         </header>
 
         <div className="mb-8 flex items-center gap-4">
           <SearchInput />
           {query && (
             <p className="text-sm font-bold text-slate-400">
-              Found {programs.length} results for "<span className="text-[#1db495]">{query}</span>"
+              Found {programs.length} results for &quot;<span className="text-[#1db495]">{query}</span>&quot;
             </p>
           )}
         </div>
@@ -82,10 +84,7 @@ export default async function ProgramPage({
           {programs.length > 0 ? (
             programs.map((p) => {
               const isDeleted = p.deleted_at !== null;
-              const canEditDelete = isSuperAdmin || 
-                                    user.role_id === 4 || 
-                                    user.role_id === 5 || 
-                                    (user.role_id === 3 && p.program_group_id === user.group_id);
+              const canEditDelete = canManageProgram(user, p.program_group_id);
 
               return (
                 <div key={p.id} className={`bg-white p-6 rounded-[2.5rem] border ${isDeleted ? 'border-red-200 bg-red-50/30' : 'border-slate-100'} shadow-sm transition-all group`}>
@@ -101,16 +100,31 @@ export default async function ProgramPage({
                   <h3 className={`text-lg font-bold mb-1 ${isDeleted ? 'text-slate-400' : 'text-slate-800'}`}>
                     {p.program_name}
                   </h3>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-4">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-3">
                     Team: {p.program_group.group_name}
                   </p>
+
+                  <div className="flex items-center gap-2 mb-4 text-[11px]">
+                    <KeyRound size={13} className={p.secret_key_prefix ? "text-[#1db495]" : "text-amber-500"} />
+                    {p.secret_key_prefix ? (
+                      <span className="font-mono text-slate-500">{p.secret_key_prefix}••••••••</span>
+                    ) : (
+                      <span className="font-bold text-amber-600">Belum ada secret key</span>
+                    )}
+                  </div>
 
                   <ProgramActions 
                     id={p.id} 
                     isDeleted={isDeleted}
                     canEditDelete={canEditDelete}
-                    programData={p}     
-                    user={user}          
+                    programData={{
+                      id: p.id,
+                      program_name: p.program_name,
+                      program_type_id: p.program_type_id,
+                      program_group_id: p.program_group_id,
+                    }}
+                    hasKey={!!p.secret_key_prefix}
+                    user={clientUser}
                     types={types}        
                     groups={groups}      
                   />

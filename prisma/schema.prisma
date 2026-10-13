@@ -4,30 +4,33 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id            Int           @id @default(autoincrement())
-  role_id       Int?
-  group_id      Int?
-  first_name    String?       @db.VarChar(100)
-  last_name     String?       @db.VarChar(100)
-  nik           String        @unique @db.VarChar(10)
-  user_email    String?       @unique @db.VarChar(150)
-  is_guest      Boolean       @default(true)
-  login_at      DateTime?     @db.Timestamp
-  
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamp
-  updatedAt     DateTime?     @updatedAt @map("updated_at") @db.Timestamp
-  updated_by    Int?
-  deleted_at    DateTime?     @db.Timestamp
-  deleted_by    Int?
+  id         Int       @id @default(autoincrement())
+  role_id    Int?
+  group_id   Int?
+  first_name String?   @db.VarChar(100)
+  last_name  String?   @db.VarChar(100)
+  nik        String    @unique @db.VarChar(10)
+  user_email String?   @unique @db.VarChar(150)
+  is_guest   Boolean   @default(true)
+  login_at   DateTime?
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime? @updatedAt @map("updated_at")
+  updated_by Int?
+  deleted_at DateTime?
+  deleted_by Int?
 
   role          Role?         @relation(fields: [role_id], references: [id])
   program_group ProgramGroup? @relation(fields: [group_id], references: [id])
 
+  @@index([role_id])
+  @@index([group_id])
+  @@index([is_guest])
   @@map("users")
 }
 
@@ -35,58 +38,67 @@ model Role {
   id                   Int      @id @default(autoincrement())
   position_level       String?  @db.VarChar(2)
   position_description String   @db.VarChar(255)
-  group_level          Int?     @db.Int
+  group_level          Int?
   group_description    String   @db.VarChar(255)
   role_name            String   @db.VarChar(255)
   created_by           Int      @default(1)
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp
-  
-  users                User[]
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  users User[]
 
   @@map("roles")
 }
 
 model ProgramGroup {
-  id         Int       @id @default(autoincrement())
-  group_name String    @db.VarChar(255)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp
-  created_by Int       @default(1)
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  id         Int      @id @default(autoincrement())
+  group_name String   @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+  created_by Int      @default(1)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
   updated_by Int?
-  
-  users      User[]
-  programs   Program[]
+
+  users    User[]
+  programs Program[]
 
   @@map("program_groups")
 }
 
 model Program {
-  id               Int          @id @default(autoincrement())
-  program_name     String       @db.VarChar(255)
+  id               Int       @id @default(autoincrement())
+  program_name     String    @db.VarChar(255)
   program_type_id  Int
   program_group_id Int
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamp
-  created_by       Int          @default(1)
-  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  createdAt        DateTime  @default(now()) @map("created_at")
+  created_by       Int       @default(1)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
   updated_by       Int?
-  deleted_at       DateTime?    @db.Timestamp
+  deleted_at       DateTime?
   deleted_by       Int?
 
-  program_type     ProgramType  @relation(fields: [program_type_id], references: [id])
-  program_group    ProgramGroup @relation(fields: [program_group_id], references: [id])
+  // Secret key per program. Yang disimpan HANYA hash SHA-256 (hex) + prefix
+  // untuk identifikasi di UI. Key asli hanya tampil sekali saat di-generate.
+  secret_key_hash         String?   @unique @db.VarChar(64)
+  secret_key_prefix       String?   @db.VarChar(16)
+  secret_key_generated_at DateTime?
+  secret_key_generated_by Int?
 
+  program_type  ProgramType  @relation(fields: [program_type_id], references: [id])
+  program_group ProgramGroup @relation(fields: [program_group_id], references: [id])
+
+  @@index([program_type_id])
+  @@index([program_group_id])
   @@map("programs")
 }
 
 model ProgramType {
-  id           Int       @id @default(autoincrement())
-  program_type String    @db.VarChar(255) 
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp
-  created_by   Int       @default(1)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  id           Int      @id @default(autoincrement())
+  program_type String   @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+  created_by   Int      @default(1)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
   updated_by   Int?
 
-  programs     Program[]
+  programs Program[]
 
   @@map("program_types")
 }

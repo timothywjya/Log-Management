@@ -1,30 +1,42 @@
 "use client";
 
 import { extendSession, logout } from "@/app/actions/auth";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
+
+const PUBLIC_PATHS = ["/login", "/register"];
+const WARNING_TIME = 55 * 60 * 1000; // peringatan di menit ke-55 (sesi 1 jam)
 
 export default function SessionTimeoutHandler() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isPublic = PUBLIC_PATHS.includes(pathname);
+  // Kapan sesi dimulai/diperpanjang terakhir. Berpindah halaman TIDAK me-reset ini
+  // karena umur cookie juga tidak ter-reset saat berpindah halaman.
+  const startedAt = useRef<number | null>(null);
+  // Naik setiap sesi diperpanjang -> timer dipasang ulang. Sebelumnya timer hanya
+  // dipasang sekali, jadi setelah "Ya, Teruskan" peringatan berikutnya tidak pernah muncul.
+  const [resetKey, setResetKey] = useState(0);
 
   const handleLogout = useCallback(async () => {
-    await logout();
     Swal.close();
-    router.push("/login");
+    await logout(); // server action redirect ke /login
     router.refresh();
   }, [router]);
 
   const handleExtend = useCallback(async () => {
     const res = await extendSession();
     if (res.success) {
+      startedAt.current = Date.now();
+      setResetKey((k) => k + 1);
       Swal.fire({
         title: "Berhasil!",
         text: "Sesi Anda telah diperpanjang 1 jam ke depan.",
         icon: "success",
         timer: 2000,
         showConfirmButton: false,
-        customClass: { popup: 'rounded-[2.5rem]' }
+        customClass: { popup: "rounded-[2.5rem]" },
       });
     } else {
       handleLogout();
@@ -32,11 +44,16 @@ export default function SessionTimeoutHandler() {
   }, [handleLogout]);
 
   useEffect(() => {
-    // 1. Munculkan peringatan pada menit ke-55 (5 menit sebelum 1 jam habis)
-    const WARNING_TIME = 55 * 60 * 1000; 
+    // Tidak ada sesi di halaman login/register, jadi tidak perlu timer.
+    if (isPublic) {
+      startedAt.current = null;
+      return;
+    }
+    if (startedAt.current === null) startedAt.current = Date.now();
+    const delay = Math.max(0, WARNING_TIME - (Date.now() - startedAt.current));
 
     const timeout = setTimeout(() => {
-      let timerInterval: any;
+      let timerInterval: ReturnType<typeof setInterval>;
 
       Swal.fire({
         title: "Sesi Hampir Habis!",
@@ -49,36 +66,30 @@ export default function SessionTimeoutHandler() {
         cancelButtonText: "Logout",
         allowOutsideClick: false,
         allowEscapeKey: false,
-        timer: 60000, // Durasi 60 detik untuk menjawab
+        timer: 60000,
         timerProgressBar: true,
-        customClass: { popup: 'rounded-[2.5rem]' },
+        customClass: { popup: "rounded-[2.5rem]" },
         didOpen: () => {
-          const b = Swal.getHtmlContainer()?.querySelector('b');
+          const b = Swal.getHtmlContainer()?.querySelector("b");
           timerInterval = setInterval(() => {
-            if (b) {
-              const secondsLeft = Math.ceil(Number(Swal.getTimerLeft()) / 1000);
-              b.textContent = secondsLeft.toString();
-            }
+            if (b) b.textContent = Math.ceil(Number(Swal.getTimerLeft()) / 1000).toString();
           }, 100);
         },
-        willClose: () => {
-          clearInterval(timerInterval);
-        }
+        willClose: () => clearInterval(timerInterval),
       }).then((result) => {
         if (result.isConfirmed) {
           handleExtend();
         } else if (
-          result.dismiss === Swal.DismissReason.cancel || 
+          result.dismiss === Swal.DismissReason.cancel ||
           result.dismiss === Swal.DismissReason.timer
         ) {
-          // Jika klik Logout ATAU waktu habis, otomatis keluar
           handleLogout();
         }
       });
-    }, WARNING_TIME);
+    }, delay);
 
     return () => clearTimeout(timeout);
-  }, [handleExtend, handleLogout]);
+  }, [isPublic, resetKey, handleExtend, handleLogout]);
 
   return null;
 }

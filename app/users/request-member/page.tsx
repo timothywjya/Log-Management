@@ -1,26 +1,17 @@
 import RequestTable from "@/components/RequestTable";
 import Sidebar from "@/components/sidebar";
 import db from "@/lib/db";
-import { getSession } from "@/lib/session";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth";
 
 export default async function RequestMemberPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
-
-  const currentUser = await db.user.findUnique({
-    where: { nik: session.nik },
-    include: { role: true }
-  });
-
-  if (currentUser?.role_id !== 1 && currentUser?.group_id !== 6) redirect("/dashboard");
+  const currentUser = await requireUser({ admin: true });
 
   const guestUsers = await db.user.findMany({
-    where: { is_guest: true },
+    where: { is_guest: true, deleted_at: null },
     orderBy: { createdAt: 'desc' }
   });
 
-    const roles = await db.role.findMany({where: { id: { not: 1 } }});
+  const roles = await db.role.findMany({where: { id: { not: 1 } }});
   const groups = await db.programGroup.findMany();
 
   return (
