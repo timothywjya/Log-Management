@@ -8,9 +8,10 @@ export default async function WaitingPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const user = await db.user.findUnique({
-    where: { nik: session.nik },
+  const user = await db.user.findFirst({
+    where: { nik: session.nik, deleted_at: null },
   });
+  if (!user) redirect("/api/session/clear");
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
@@ -44,7 +45,7 @@ export default async function WaitingPage() {
         <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-8 flex items-start gap-3 text-left">
           <ShieldAlert className="text-slate-400 mt-0.5" size={18} />
           <p className="text-[11px] text-slate-500 font-semibold leading-normal uppercase tracking-wider">
-            Access restricted. You cannot access the dashboard while "Guest" status is active.
+            Access restricted. You cannot access the dashboard while &quot;Guest&quot; status is active.
           </p>
         </div>
 

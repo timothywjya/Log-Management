@@ -5,6 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+<<<<<<< HEAD
 }
 
 model User {
@@ -22,12 +23,41 @@ model User {
   updated_by    Int?
   deleted_at    DateTime?
   deleted_by    Int?
+=======
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  role_id    Int?
+  group_id   Int?
+  first_name String?   @db.VarChar(100)
+  last_name  String?   @db.VarChar(100)
+  nik        String    @unique @db.VarChar(10)
+  user_email String?   @unique @db.VarChar(150)
+  is_guest   Boolean   @default(true)
+  login_at   DateTime?
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime? @updatedAt @map("updated_at")
+  updated_by Int?
+  deleted_at DateTime?
+  deleted_by Int?
+
+  role          Role?         @relation(fields: [role_id], references: [id])
+>>>>>>> 9bf2684618bb31c7c61c64736091cfcab0e16617
   program_group ProgramGroup? @relation(fields: [group_id], references: [id])
   role          Role?         @relation(fields: [role_id], references: [id])
 
+<<<<<<< HEAD
   @@index([group_id])
   @@index([is_guest])
   @@index([role_id])
+=======
+  @@index([role_id])
+  @@index([group_id])
+  @@index([is_guest])
+>>>>>>> 9bf2684618bb31c7c61c64736091cfcab0e16617
   @@map("users")
 }
 
@@ -40,12 +70,18 @@ model Role {
   role_name            String   @db.VarChar(255)
   created_by           Int      @default(1)
   createdAt            DateTime @default(now()) @map("created_at")
+<<<<<<< HEAD
   users                User[]
+=======
+
+  users User[]
+>>>>>>> 9bf2684618bb31c7c61c64736091cfcab0e16617
 
   @@map("roles")
 }
 
 model ProgramGroup {
+<<<<<<< HEAD
   id         Int       @id @default(autoincrement())
   group_name String    @db.VarChar(255)
   createdAt  DateTime  @default(now()) @map("created_at")
@@ -54,11 +90,23 @@ model ProgramGroup {
   updated_by Int?
   programs   Program[]
   users      User[]
+=======
+  id         Int      @id @default(autoincrement())
+  group_name String   @db.VarChar(255)
+  createdAt  DateTime @default(now()) @map("created_at")
+  created_by Int      @default(1)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  updated_by Int?
+
+  users    User[]
+  programs Program[]
+>>>>>>> 9bf2684618bb31c7c61c64736091cfcab0e16617
 
   @@map("program_groups")
 }
 
 model Program {
+<<<<<<< HEAD
   id                      Int          @id @default(autoincrement())
   program_name            String       @db.VarChar(255)
   program_type_id         Int
@@ -78,10 +126,36 @@ model Program {
 
   @@index([program_group_id])
   @@index([program_type_id])
+=======
+  id               Int       @id @default(autoincrement())
+  program_name     String    @db.VarChar(255)
+  program_type_id  Int
+  program_group_id Int
+  createdAt        DateTime  @default(now()) @map("created_at")
+  created_by       Int       @default(1)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+  updated_by       Int?
+  deleted_at       DateTime?
+  deleted_by       Int?
+
+  // Secret key per program. Yang disimpan HANYA hash SHA-256 (hex) + prefix
+  // untuk identifikasi di UI. Key asli hanya tampil sekali saat di-generate.
+  secret_key_hash         String?   @unique @db.VarChar(64)
+  secret_key_prefix       String?   @db.VarChar(16)
+  secret_key_generated_at DateTime?
+  secret_key_generated_by Int?
+
+  program_type  ProgramType  @relation(fields: [program_type_id], references: [id])
+  program_group ProgramGroup @relation(fields: [program_group_id], references: [id])
+
+  @@index([program_type_id])
+  @@index([program_group_id])
+>>>>>>> 9bf2684618bb31c7c61c64736091cfcab0e16617
   @@map("programs")
 }
 
 model ProgramType {
+<<<<<<< HEAD
   id           Int       @id @default(autoincrement())
   program_type String    @db.VarChar(255)
   createdAt    DateTime  @default(now()) @map("created_at")
@@ -269,3 +343,16 @@ enum LogLevel {
   ERROR
   FATAL
 }
+=======
+  id           Int      @id @default(autoincrement())
+  program_type String   @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at")
+  created_by   Int      @default(1)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+  updated_by   Int?
+
+  programs Program[]
+
+  @@map("program_types")
+}
+>>>>>>> 9bf2684618bb31c7c61c64736091cfcab0e16617

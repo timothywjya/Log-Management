@@ -4,9 +4,8 @@ import { notFound } from "next/navigation";
 
 export default async function RegisterPage() {
   const session = await getSession();
-  console.log(session.nik);
-  if (!session || !session.nik) {
-    notFound(); 
+  if (!session?.nik) {
+    notFound();
   }
 
   return (

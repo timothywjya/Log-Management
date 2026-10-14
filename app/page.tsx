@@ -1,10 +1,6 @@
-import { Button } from "@/components/ui/button"
+import { redirect } from "next/navigation";
 
+// proxy.ts sudah mengarahkan "/" sesuai status login; ini hanya fallback.
 export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold mb-4">Halo Shadcn!</h1>
-      <Button>Klik Saya</Button>
-    </main>
-  )
+  redirect("/dashboard");
 }
