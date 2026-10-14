@@ -1,11 +1,10 @@
 generator client {
-  provider   = "prisma-client-js"
-  engineType = "library"
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
 }
 
 model User {
@@ -17,17 +16,18 @@ model User {
   nik           String        @unique @db.VarChar(10)
   user_email    String?       @unique @db.VarChar(150)
   is_guest      Boolean       @default(true)
-  login_at      DateTime?     @db.Timestamp
-  
-  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamp
-  updatedAt     DateTime?     @updatedAt @map("updated_at") @db.Timestamp
+  login_at      DateTime?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime?     @updatedAt @map("updated_at")
   updated_by    Int?
-  deleted_at    DateTime?     @db.Timestamp
+  deleted_at    DateTime?
   deleted_by    Int?
-
-  role          Role?         @relation(fields: [role_id], references: [id])
   program_group ProgramGroup? @relation(fields: [group_id], references: [id])
+  role          Role?         @relation(fields: [role_id], references: [id])
 
+  @@index([group_id])
+  @@index([is_guest])
+  @@index([role_id])
   @@map("users")
 }
 
@@ -35,12 +35,11 @@ model Role {
   id                   Int      @id @default(autoincrement())
   position_level       String?  @db.VarChar(2)
   position_description String   @db.VarChar(255)
-  group_level          Int?     @db.Int
+  group_level          Int?
   group_description    String   @db.VarChar(255)
   role_name            String   @db.VarChar(255)
   created_by           Int      @default(1)
-  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp
-  
+  createdAt            DateTime @default(now()) @map("created_at")
   users                User[]
 
   @@map("roles")
@@ -49,44 +48,224 @@ model Role {
 model ProgramGroup {
   id         Int       @id @default(autoincrement())
   group_name String    @db.VarChar(255)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp
+  createdAt  DateTime  @default(now()) @map("created_at")
   created_by Int       @default(1)
-  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at")
   updated_by Int?
-  
-  users      User[]
   programs   Program[]
+  users      User[]
 
   @@map("program_groups")
 }
 
 model Program {
-  id               Int          @id @default(autoincrement())
-  program_name     String       @db.VarChar(255)
-  program_type_id  Int
-  program_group_id Int
-  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamp
-  created_by       Int          @default(1)
-  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamp
-  updated_by       Int?
-  deleted_at       DateTime?    @db.Timestamp
-  deleted_by       Int?
+  id                      Int          @id @default(autoincrement())
+  program_name            String       @db.VarChar(255)
+  program_type_id         Int
+  program_group_id        Int
+  createdAt               DateTime     @default(now()) @map("created_at")
+  created_by              Int          @default(1)
+  updatedAt               DateTime     @default(now()) @updatedAt @map("updated_at")
+  updated_by              Int?
+  deleted_at              DateTime?
+  deleted_by              Int?
+  secret_key_hash         String?      @unique @db.VarChar(64)
+  secret_key_prefix       String?      @db.VarChar(16)
+  secret_key_generated_at DateTime?
+  secret_key_generated_by Int?
+  program_group           ProgramGroup @relation(fields: [program_group_id], references: [id])
+  program_type            ProgramType  @relation(fields: [program_type_id], references: [id])
 
-  program_type     ProgramType  @relation(fields: [program_type_id], references: [id])
-  program_group    ProgramGroup @relation(fields: [program_group_id], references: [id])
-
+  @@index([program_group_id])
+  @@index([program_type_id])
   @@map("programs")
 }
 
 model ProgramType {
   id           Int       @id @default(autoincrement())
-  program_type String    @db.VarChar(255) 
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp
+  program_type String    @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @map("created_at")
   created_by   Int       @default(1)
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamp
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
   updated_by   Int?
-
   programs     Program[]
 
   @@map("program_types")
+}
+
+model log_desktop {
+  desktop_id                BigInt    @id @default(autoincrement())
+  desktop_log_date          DateTime  @default(now())
+  desktop_level             LogLevel
+  desktop_correlation_id    String?   @db.Uuid
+  desktop_application       String    @db.VarChar(100)
+  desktop_module            String?   @db.VarChar(150)
+  desktop_form_name         String?   @db.VarChar(150)
+  desktop_method_name       String?   @db.VarChar(150)
+  desktop_user_id           String?   @db.VarChar(100)
+  desktop_station_id        String?   @db.VarChar(100)
+  desktop_transaction_no    String?   @db.VarChar(100)
+  desktop_program_id        String?   @db.VarChar(100)
+  desktop_message           String?
+  desktop_method_arguments  Json?
+  desktop_return_value      Json?
+  desktop_execution_time_ms Int?
+  desktop_exception_message String?
+  desktop_stack_trace       String?
+  desktop_machine_name      String?   @db.VarChar(150)
+  desktop_ip_address        String?   @db.VarChar(45)
+  desktop_os_version        String?   @db.VarChar(150)
+  desktop_app_version       String?   @db.VarChar(50)
+  desktop_thread_id         String?   @db.VarChar(50)
+  desktop_created_at        DateTime  @default(now())
+  desktop_created_by        String?   @db.VarChar(100)
+  desktop_updated_at        DateTime?
+  desktop_updated_by        String?   @db.VarChar(100)
+  desktop_branch_code       String?   @db.VarChar(20)
+  desktop_store_code        String?   @db.VarChar(20)
+
+  @@unique([desktop_branch_code, desktop_store_code, desktop_station_id, desktop_correlation_id], map: "uq_desktop_dedup")
+  @@index([desktop_branch_code], map: "desktop_branch_code_idx")
+  @@index([desktop_store_code], map: "desktop_store_code_idx")
+  @@index([desktop_application])
+  @@index([desktop_correlation_id])
+  @@index([desktop_level])
+  @@index([desktop_log_date])
+  @@index([desktop_program_id])
+  @@index([desktop_station_id])
+}
+
+model log_job {
+  job_id                BigInt    @id @default(autoincrement())
+  job_log_date          DateTime  @default(now())
+  job_level             LogLevel
+  job_correlation_id    String?   @db.Uuid
+  job_application       String    @db.VarChar(100)
+  job_module            String?   @db.VarChar(150)
+  job_form_name         String?   @db.VarChar(150)
+  job_method_name       String?   @db.VarChar(150)
+  job_user_id           String?   @db.VarChar(100)
+  job_station_id        String?   @db.VarChar(100)
+  job_transaction_no    String?   @db.VarChar(100)
+  job_program_id        String?   @db.VarChar(100)
+  job_message           String?
+  job_method_arguments  Json?
+  job_return_value      Json?
+  job_execution_time_ms Int?
+  job_exception_message String?
+  job_stack_trace       String?
+  job_machine_name      String?   @db.VarChar(150)
+  job_ip_address        String?   @db.VarChar(45)
+  job_os_version        String?   @db.VarChar(150)
+  job_app_version       String?   @db.VarChar(50)
+  job_thread_id         String?   @db.VarChar(50)
+  job_created_at        DateTime  @default(now())
+  job_created_by        String?   @db.VarChar(100)
+  job_updated_at        DateTime?
+  job_updated_by        String?   @db.VarChar(100)
+  job_branch_code       String?   @db.VarChar(20)
+  job_store_code        String?   @db.VarChar(20)
+
+  @@index([job_application])
+  @@index([job_branch_code])
+  @@index([job_correlation_id])
+  @@index([job_level])
+  @@index([job_log_date])
+  @@index([job_program_id])
+  @@index([job_store_code])
+}
+
+model log_mobile {
+  mobile_id                BigInt    @id @default(autoincrement())
+  mobile_log_date          DateTime  @default(now())
+  mobile_level             LogLevel
+  mobile_correlation_id    String?   @db.Uuid
+  mobile_application       String    @db.VarChar(100)
+  mobile_module            String?   @db.VarChar(150)
+  mobile_form_name         String?   @db.VarChar(150)
+  mobile_method_name       String?   @db.VarChar(150)
+  mobile_user_id           String?   @db.VarChar(100)
+  mobile_device_id         String?   @db.VarChar(150)
+  mobile_device_type       String?   @db.VarChar(50)
+  mobile_device_merk       String?   @db.VarChar(100)
+  mobile_branch_code       String?   @db.VarChar(20)
+  mobile_store_code        String?   @db.VarChar(20)
+  mobile_transaction_no    String?   @db.VarChar(100)
+  mobile_program_id        String?   @db.VarChar(100)
+  mobile_message           String?
+  mobile_method_arguments  Json?
+  mobile_return_value      Json?
+  mobile_execution_time_ms Int?
+  mobile_exception_message String?
+  mobile_stack_trace       String?
+  mobile_machine_name      String?   @db.VarChar(150)
+  mobile_ip_address        String?   @db.VarChar(45)
+  mobile_os_version        String?   @db.VarChar(150)
+  mobile_app_version       String?   @db.VarChar(50)
+  mobile_thread_id         String?   @db.VarChar(50)
+  mobile_created_at        DateTime  @default(now())
+  mobile_created_by        String?   @db.VarChar(100)
+  mobile_updated_at        DateTime?
+  mobile_updated_by        String?   @db.VarChar(100)
+
+  @@unique([mobile_branch_code, mobile_store_code, mobile_device_id, mobile_correlation_id], map: "uq_mobile_dedup")
+  @@index([mobile_application], map: "idx_mobile_application")
+  @@index([mobile_branch_code], map: "idx_mobile_branch_code")
+  @@index([mobile_correlation_id], map: "idx_mobile_correlation_id")
+  @@index([mobile_device_id], map: "idx_mobile_device_id")
+  @@index([mobile_level], map: "idx_mobile_level")
+  @@index([mobile_log_date(sort: Desc)], map: "idx_mobile_log_date")
+  @@index([mobile_program_id], map: "idx_mobile_program_id")
+  @@index([mobile_store_code], map: "idx_mobile_store_code")
+}
+
+model log_web {
+  web_id                BigInt    @id @default(autoincrement())
+  web_log_date          DateTime  @default(now())
+  web_level             LogLevel
+  web_correlation_id    String?   @db.Uuid
+  web_application       String    @db.VarChar(100)
+  web_module            String?   @db.VarChar(150)
+  web_form_name         String?   @db.VarChar(150)
+  web_method_name       String?   @db.VarChar(150)
+  web_user_id           String?   @db.VarChar(100)
+  web_station_id        String?   @db.VarChar(100)
+  web_branch_code       String?   @db.VarChar(20)
+  web_store_code        String?   @db.VarChar(20)
+  web_transaction_no    String?   @db.VarChar(100)
+  web_program_id        String?   @db.VarChar(100)
+  web_message           String?
+  web_method_arguments  Json?
+  web_return_value      Json?
+  web_execution_time_ms Int?
+  web_exception_message String?
+  web_stack_trace       String?
+  web_machine_name      String?   @db.VarChar(150)
+  web_ip_address        String?   @db.VarChar(45)
+  web_os_version        String?   @db.VarChar(150)
+  web_app_version       String?   @db.VarChar(50)
+  web_thread_id         String?   @db.VarChar(50)
+  web_created_at        DateTime  @default(now())
+  web_created_by        String?   @db.VarChar(100)
+  web_updated_at        DateTime?
+  web_updated_by        String?   @db.VarChar(100)
+
+  @@unique([web_branch_code, web_store_code, web_station_id, web_correlation_id], map: "uq_web_dedup")
+  @@index([web_application], map: "idx_web_application")
+  @@index([web_branch_code], map: "idx_web_branch_code")
+  @@index([web_correlation_id], map: "idx_web_correlation_id")
+  @@index([web_level], map: "idx_web_level")
+  @@index([web_log_date(sort: Desc)], map: "idx_web_log_date")
+  @@index([web_program_id], map: "idx_web_program_id")
+  @@index([web_station_id], map: "idx_web_station_id")
+  @@index([web_store_code], map: "idx_web_store_code")
+}
+
+enum LogLevel {
+  TRACE
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  FATAL
 }
