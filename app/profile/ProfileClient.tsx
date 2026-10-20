@@ -1,14 +1,10 @@
 "use client";
 
-import { updateProfileAction, updatePasswordAction } from "@/app/actions/profile";
+import { updateProfileAction } from "@/app/actions/profile";
 import {
   AlertCircle,
   CheckCircle2,
-  Eye,
-  EyeOff,
-  KeyRound,
   Loader2,
-  Lock,
   Mail,
   ShieldCheck,
   User as UserIcon,
@@ -40,37 +36,6 @@ function Alert({ type, msg }: { type: "error" | "success"; msg: string }) {
   );
 }
 
-function PasswordInput({
-  name,
-  placeholder,
-  required,
-}: {
-  name: string;
-  placeholder: string;
-  required?: boolean;
-}) {
-  const [show, setShow] = useState(false);
-  return (
-    <div className="relative">
-      <input
-        name={name}
-        type={show ? "text" : "password"}
-        placeholder={placeholder}
-        required={required}
-        className={FIELD + " pr-12"}
-      />
-      <button
-        type="button"
-        onClick={() => setShow((s) => !s)}
-        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-        tabIndex={-1}
-      >
-        {show ? <EyeOff size={16} /> : <Eye size={16} />}
-      </button>
-    </div>
-  );
-}
-
 // ─── Section card ─────────────────────────────────────────────
 function Card({ children, title, icon }: { children: React.ReactNode; title: string; icon: React.ReactNode }) {
   return (
@@ -92,12 +57,6 @@ export default function ProfileClient({ user }: { user: any }) {
   const [profilePending, startProfile] = useTransition();
   const [profileMsg, setProfileMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
 
-  // ── Password state ──
-  const [pwPending, startPw] = useTransition();
-  const [pwMsg, setPwMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
-
-  const hasPassword = !!user.password_hash;
-
   // ── Handlers ──
   function handleProfile(formData: FormData) {
     setProfileMsg(null);
@@ -108,25 +67,13 @@ export default function ProfileClient({ user }: { user: any }) {
     });
   }
 
-  function handlePassword(formData: FormData) {
-    setPwMsg(null);
-    startPw(async () => {
-      const res = await updatePasswordAction(formData);
-      if (res?.error) setPwMsg({ type: "error", text: res.error });
-      else {
-        setPwMsg({ type: "success", text: "Password berhasil diperbarui!" });
-        (document.getElementById("pw-form") as HTMLFormElement)?.reset();
-      }
-    });
-  }
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <header className="mb-2">
         <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight">Profil Saya</h1>
         <p className="text-slate-500 text-sm mt-0.5 font-medium">
-          Kelola informasi akun dan keamanan Anda
+          Kelola informasi akun Anda
         </p>
       </header>
 
@@ -232,52 +179,6 @@ export default function ProfileClient({ user }: { user: any }) {
               className="h-12 px-8 bg-[#1db495] hover:bg-[#14866d] text-white text-sm font-bold rounded-2xl shadow shadow-[#1db495]/25 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
             >
               {profilePending ? <><Loader2 size={15} className="animate-spin" />Menyimpan...</> : "Simpan Perubahan"}
-            </button>
-          </div>
-        </form>
-      </Card>
-
-      {/* ── Update Password ──────────────────────────────────── */}
-      <Card title="Keamanan & Password" icon={<KeyRound size={18} />}>
-        {pwMsg && <div className="mb-5"><Alert type={pwMsg.type} msg={pwMsg.text} /></div>}
-
-        {!hasPassword && (
-          <div className="mb-5 flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-100 rounded-xl text-sm text-amber-700 font-medium">
-            <Lock size={15} className="shrink-0" />
-            Anda belum memiliki password. Set password untuk mengaktifkan login via username.
-          </div>
-        )}
-
-        <form id="pw-form" action={handlePassword} className="space-y-4">
-          {hasPassword && (
-            <div>
-              <Label>Password Saat Ini</Label>
-              <PasswordInput name="current_password" placeholder="Masukkan password saat ini" required />
-            </div>
-          )}
-
-          <div>
-            <Label>Password Baru</Label>
-            <PasswordInput name="new_password" placeholder="Minimal 8 karakter" required />
-          </div>
-
-          <div>
-            <Label>Konfirmasi Password Baru</Label>
-            <PasswordInput name="confirm_password" placeholder="Ulangi password baru" required />
-          </div>
-
-          <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-400">
-            <ShieldCheck size={13} className="shrink-0 text-[#1db495]" />
-            Password tersimpan terenkripsi dengan bcrypt (12 rounds)
-          </div>
-
-          <div className="pt-1">
-            <button
-              type="submit"
-              disabled={pwPending}
-              className="h-12 px-8 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-2xl shadow shadow-slate-800/20 transition-all active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
-            >
-              {pwPending ? <><Loader2 size={15} className="animate-spin" />Memperbarui...</> : "Perbarui Password"}
             </button>
           </div>
         </form>

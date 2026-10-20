@@ -31,14 +31,7 @@ npx prisma db seed
 npm run dev
 ```
 
-## 5. Setup MFA untuk Administrator
-1. Login sebagai Administrator
-2. Buka Settings → Security
-3. Hit `POST /api/admin/mfa/setup`
-4. Scan QR code dengan Google Authenticator
-5. MFA aktif mulai login berikutnya
-
-## 6. Tambah Role/Tim Baru (Dynamic)
+## 5. Tambah Role/Tim Baru (Dynamic)
 ```bash
 # Via API (Admin only)
 curl -X POST /api/admin/org \
@@ -55,12 +48,10 @@ lib/
     org.repository.ts
     log.repository.ts
   controllers/      # Business logic
-    auth.controller.ts
     user.controller.ts
     org.controller.ts
   security/         # Security utilities
-    crypto.ts       # Argon2, AES-256-GCM, sanitize
-    mfa.ts          # TOTP
+    crypto.ts       # AES-256-GCM, sanitize
     rbac.ts         # Permissions
   reporting/
     report.engine.ts  # Modular reporting

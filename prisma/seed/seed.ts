@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg"; 
-import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 
 if (!process.env.DATABASE_URL) {
@@ -10,16 +9,8 @@ if (!process.env.DATABASE_URL) {
 const adapter = new PrismaPg({ connectionString: String(process.env.DATABASE_URL) });
 const prisma = new PrismaClient({ adapter });
 
-const DEFAULT_PASSWORD = "Indomaret@2025";
-const BCRYPT_ROUNDS    = 12;
-
 async function main() {
   console.log("🌱 Seeding database dengan UUID...\n");
-
-  console.log("🔐 Hashing password dengan bcrypt (rounds=12)...");
-  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, BCRYPT_ROUNDS);
-  console.log(`   Hash: ${passwordHash.substring(0, 29)}...`);
-  console.log(`   Default password: ${DEFAULT_PASSWORD}\n`);
 
   // 1. Seeding Program Groups
   console.log("📋 Seeding program_groups...");
@@ -222,7 +213,6 @@ async function main() {
   let skippedCount = 0;
 
   for (const u of usersData) {
-    const hash = u.is_guest ? null : passwordHash;
     try {
       await prisma.user.create({
         data: {
@@ -233,7 +223,6 @@ async function main() {
           nik:           u.nik,
           username:      u.username ?? undefined,
           user_email:    u.user_email ?? undefined,
-          password_hash: hash,
           is_guest:      u.is_guest,
           is_admin:      (u as any).is_admin ?? false,
           login_at:      u.login_at,
@@ -274,7 +263,6 @@ async function main() {
 
   console.log("═══════════════════════════════════════════════════");
   console.log("🎉 SEED SELESAI");
-  console.log("   Default password : " + DEFAULT_PASSWORD);
   console.log("   Admin login      : username=admin / nik=0000000001");
   console.log("   Catatan          : roles table dihapus — admin via group_name='Administrator' atau is_admin=true");
   console.log("═══════════════════════════════════════════════════");

@@ -14,7 +14,6 @@ type UserCreateInput = {
   last_name?: string;
   username?: string;
   user_email?: string;
-  password_hash?: string;
   team_id?: string;
   sub_team_id?: string;
   group_id?: string;

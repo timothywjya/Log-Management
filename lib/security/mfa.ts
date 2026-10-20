@@ -1,13 +1,5 @@
-/**
- * SECURITY — MFA (TOTP) untuk Administrator
- * Menggunakan otplib untuk TOTP standard (RFC 6238).
- * Secret disimpan terenkripsi di DB via AES-256-GCM.
- */
-
 import { encryptSensitive, decryptSensitive } from "./crypto";
 
-// ─── TOTP via otplib ─────────────────────────────
-// Requires: npm install otplib qrcode
 export async function generateMfaSecret(userEmail: string) {
   const { authenticator } = await import("otplib");
   const secret = authenticator.generateSecret();

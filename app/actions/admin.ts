@@ -95,7 +95,6 @@ export async function updateUserSettingsAction(
     group_id?: string | null;
     is_admin?: boolean;
     is_manager?: boolean;
-    must_reset_password?: boolean;
   }
 ) {
   const guard = await guardAdminOrManager();
@@ -109,7 +108,6 @@ export async function updateUserSettingsAction(
     if (data.sub_team_id          !== undefined) updateData.sub_team_id          = data.sub_team_id || null;
     if (data.is_admin             !== undefined) updateData.is_admin             = data.is_admin;
     if (data.is_manager           !== undefined) updateData.is_manager           = data.is_manager;
-    if (data.must_reset_password  !== undefined) updateData.must_reset_password  = data.must_reset_password;
   }
 
   updateData.updated_at = new Date();
@@ -118,16 +116,6 @@ export async function updateUserSettingsAction(
   await db.user.update({ where: { id: targetUserId }, data: updateData });
   revalidatePath("/admin");
   revalidatePath("/users/request-member");
-}
-
-// ─── Toggle must_reset_password ───────────────────────────────
-export async function setMustResetPassword(targetUserId: string, value: boolean) {
-  await guardAdmin();
-  await db.user.update({
-    where: { id: targetUserId },
-    data: { must_reset_password: value, updated_at: new Date() },
-  });
-  revalidatePath("/admin");
 }
 
 // ─── Create new user (oleh Admin) ────────────────────────────
@@ -144,9 +132,6 @@ export async function createUserAction(data: {
 }) {
   const adminUser = await guardAdmin();
 
-  const { hashPassword } = await import("@/lib/security/crypto");
-  const defaultHash = await hashPassword(data.nik);
-
   const user = await db.user.create({
     data: {
       nik:                 data.nik,
@@ -159,8 +144,6 @@ export async function createUserAction(data: {
       group_id:            data.group_id   || undefined,
       is_guest:            false,
       is_manager:          data.is_manager ?? false,
-      must_reset_password: true,
-      password_hash:       defaultHash,
       created_by:          adminUser.id,
     },
   });

@@ -1,0 +1,7 @@
+Hapus file/folder berikut dari proyek Anda:
+
+lib/security/mfa.ts
+lib/controllers/auth.controller.ts
+app/api/admin/mfa/            (setup + verify)
+app/api/auth/login/
+app/reset-password/           (page.tsx + ResetPasswordClient.tsx)

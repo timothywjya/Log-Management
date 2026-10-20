@@ -4,7 +4,6 @@ import {
   deleteUserAction,
   approveUserAction,
   updateUserSettingsAction,
-  setMustResetPassword,
   assignGroupTeamsAction,
 } from "@/app/actions/admin";
 import {
@@ -16,7 +15,6 @@ import {
   Database,
   Edit2,
   FileText,
-  KeyRound,
   LayoutDashboard,
   RefreshCw,
   Save,
@@ -77,7 +75,6 @@ function UserSettingsModal({
   const [groupId,  setGroupId]  = useState(user.group_id   ?? "");
   const [isAdmin,  setIsAdmin]  = useState(user.is_admin   ?? false);
   const [isManager,setIsManager]= useState(user.is_manager ?? false);
-  const [mustReset,setMustReset]= useState(user.must_reset_password ?? false);
   const [loading,  setLoading]  = useState(false);
   const [saved,    setSaved]    = useState(false);
 
@@ -93,7 +90,6 @@ function UserSettingsModal({
       group_id:            groupId  || null,
       is_admin:            isAdmin,
       is_manager:          isManager,
-      must_reset_password: mustReset,
     });
     setLoading(false);
     setSaved(true);
@@ -155,7 +151,7 @@ function UserSettingsModal({
           </div>
 
           {/* Flags */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="grid grid-cols-2 gap-2 pt-1">
             <label className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-all">
               <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)}
                 className="w-4 h-4 accent-red-500 rounded" />
@@ -170,14 +166,6 @@ function UserSettingsModal({
               <div>
                 <p className="text-[10px] font-bold text-slate-700">Manager</p>
                 <p className="text-[9px] text-slate-400">Akses tim</p>
-              </div>
-            </label>
-            <label className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl cursor-pointer hover:bg-amber-100 transition-all">
-              <input type="checkbox" checked={mustReset} onChange={(e) => setMustReset(e.target.checked)}
-                className="w-4 h-4 accent-amber-500 rounded" />
-              <div>
-                <p className="text-[10px] font-bold text-amber-700">Reset PW</p>
-                <p className="text-[9px] text-amber-500">Paksa reset</p>
               </div>
             </label>
           </div>
@@ -433,11 +421,6 @@ export default function AdminDashboardClient({
                             <div className="flex flex-wrap gap-1">
                               {user.is_admin    && <span className="text-[9px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">Admin</span>}
                               {user.is_manager  && <span className="text-[9px] font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200">Manager</span>}
-                              {user.must_reset_password && (
-                                <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-0.5">
-                                  <KeyRound size={8} /> Reset
-                                </span>
-                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-[10px] text-slate-400 font-mono whitespace-nowrap">
