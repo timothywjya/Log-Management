@@ -1,0 +1,28 @@
+// ===== 1) TAMBAHKAN model baru ini di akhir prisma/schema.prisma =====
+
+model ActivityLog {
+  id          BigInt   @id @default(autoincrement())
+  program_id  Int
+  category    String   @db.VarChar(10)
+  level       String   @default("info") @db.VarChar(10)
+  action      String   @db.VarChar(100)
+  message     String?
+  actor       String?  @db.VarChar(100)
+  ip_address  String?  @db.VarChar(45)
+  device      String?  @db.VarChar(150)
+  app_version String?  @db.VarChar(50)
+  metadata    Json?
+  occurred_at DateTime @default(now())
+  created_at  DateTime @default(now())
+
+  program Program @relation(fields: [program_id], references: [id])
+
+  @@index([category, occurred_at(sort: Desc)])
+  @@index([program_id, occurred_at(sort: Desc)])
+  @@map("activity_logs")
+}
+
+// ===== 2) Di model Program yang SUDAH ADA, tambahkan SATU baris relasi balik ini =====
+//
+//   activity_logs ActivityLog[]
+//
