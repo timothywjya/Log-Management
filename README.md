@@ -1,54 +1,50 @@
 # Log Management
 
-Next.js 16 + Prisma + **PostgreSQL**.
+Next.js 16 + Prisma 7 + PostgreSQL, disusun dengan Clean Architecture (lihat [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)).
+
+## Struktur
+
+```
+src/
+  domain/          entitas & aturan murni
+  application/     use case + port (interface)
+  infrastructure/  Prisma, sesi JWT, ESS, container (composition root)
+  presentation/    server action, guard, komponen React
+  app/             route Next.js (tipis)
+prisma/            schema & migrasi
+scripts/           generate-secret, backfill-program-keys, send-test-logs
+docs/              ARCHITECTURE.md, ACTIVITY_LOG.md
+```
 
 ## Menjalankan (development)
 
 ```bash
 npm install
 docker compose up -d          # PostgreSQL lokal (atau pakai server Postgres sendiri)
-cp .env.example .env          # lalu sesuaikan DATABASE_URL jika perlu
-npm run generate:secret       # mengisi APP_SECRET_KEY di .env secara otomatis
+cp .env.example .env          # lalu sesuaikan
+npm run generate:secret       # mengisi APP_SECRET_KEY di .env otomatis
 npm run db:deploy             # membuat tabel
 npm run dev
 ```
 
 Database baru masih kosong. Aplikasi membutuhkan data awal di tabel `roles`, `program_groups`, dan
-`program_types` (id role/group yang dipakai kode: role 1 = admin, group 6 = admin group, dst).
-Jika Anda punya data lama di MySQL, salin lewat langkah berikut.
+`program_types` (role 1 = admin, group 6 = admin group, dst; lihat `src/domain/policies/permissions.ts`).
 
-## Migrasi data MySQL → PostgreSQL
+## Konfigurasi penting
 
-1. Isi `MYSQL_URL` (database lama) dan `DATABASE_URL` (PostgreSQL baru) di `.env`.
-2. `npm run db:deploy` (membuat tabel di PostgreSQL)
-3. `npm run db:migrate-from-mysql`
-
-Skrip menyalin semua tabel dengan id yang sama, menyinkronkan sequence PostgreSQL, lalu mencocokkan jumlah
-baris tiap tabel. Skrip berhenti jika tabel tujuan sudah berisi data. Email dinormalisasi ke huruf kecil karena
-PostgreSQL membedakan huruf besar/kecil pada unique index.
-
-## Secret key
-
-### Secret key per program
-- Dibuat **otomatis** saat program dibuat dan ditampilkan **satu kali** di layar.
-- Program lama: klik ikon kunci di kartu program, atau jalankan `npm run db:backfill-keys` untuk
-  membuat key semua program aktif sekaligus (hasilnya ke file CSV lokal; hapus setelah dibagikan).
-- Format: `lmk_` + 32 byte acak (256 bit). Database hanya menyimpan hash SHA-256 dan prefix 10 karakter,
-  jadi key yang hilang tidak bisa dilihat ulang, hanya bisa di-generate ulang (key lama langsung tidak berlaku).
-- Memverifikasi key di endpoint penerima log:
-
-```ts
-import { findProgramByKey } from "@/lib/program-key";
-
-const program = await findProgramByKey(request.headers.get("x-program-key"));
-if (!program) return new Response("Unauthorized", { status: 401 });
-```
-
-### Secret key aplikasi (`APP_SECRET_KEY`)
-`npm run generate:secret` membuat dan menulisnya ke `.env`. Aplikasi menolak start jika key kosong atau
-kurang dari 32 karakter. Mengganti key (`--force`) membuat semua user harus login ulang.
-
-## Catatan deployment
-- Jika diakses lewat HTTP (bukan HTTPS), set `COOKIE_SECURE="false"`, kalau tidak browser menolak cookie login
-  pada mode production.
+- `ESS_VERIFY_PASSWORD="true"` **wajib di production**. Jika `false`, password tidak diperiksa dan siapa pun
+  dengan NIK 10 digit bisa login.
+- `COOKIE_SECURE="false"` jika diakses lewat HTTP (bukan HTTPS).
+- `APP_SECRET_KEY` minimal 32 karakter. Mengganti key membuat semua user harus login ulang.
 - Gunakan `npm run db:deploy` (bukan `db:migrate`) di server production.
+
+## Secret key program
+
+- Dibuat **otomatis** saat program dibuat dan ditampilkan **satu kali**.
+- Program lama: klik ikon kunci di kartu program, atau `npm run db:backfill-keys` (hasil ke file CSV lokal; hapus setelah dibagikan).
+- Format `lmk_` + 32 byte acak. Database hanya menyimpan hash SHA-256 dan prefix, jadi key hilang hanya bisa di-generate ulang.
+- Mengirim log: lihat [docs/ACTIVITY_LOG.md](docs/ACTIVITY_LOG.md). Uji cepat: `PROGRAM_KEY=lmk_xxx npm run logs:send-test`.
+
+## Perintah
+
+`npm run dev | build | lint | typecheck`

@@ -20,7 +20,7 @@ Header wajib: `x-program-key: lmk_...` (secret key program, dari halaman Program
 
 | Field         | Wajib | Keterangan |
 |---------------|-------|------------|
-| `category`    | tidak | `web` \| `job` \| `desktop` \| `mobile`. Jika kosong, diturunkan dari nama tipe program (lihat `lib/log-category.ts`). |
+| `category`    | tidak | `web` \| `job` \| `desktop` \| `mobile`. Jika kosong, diturunkan dari nama tipe program (lihat `src/domain/log/log-category.ts`). |
 | `level`       | tidak | `trace` \| `debug` \| `info` (default) \| `warn` \| `error` \| `fatal` (disimpan sebagai enum huruf besar) |
 | `action`      | ya    | Nama kejadian, maks 100 karakter. Disimpan di kolom `*_method_name` kecuali `method_name` diisi. |
 | `message`     | tidak | Teks bebas, maks 4000 karakter |
